@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { NODES, type Choice, type StoryNode, type Variant } from '../story/script'
+import { NODES, RECALL_CHANCE, recallFor, type Choice, type StoryNode, type Variant } from '../story/script'
 import { cleanInput, resolveText, speak, type CallContext } from '../story/engine'
 import type { AnswerLog, Profile, WeatherInfo } from '../types'
 import { dialectOf } from '../data/prefectures'
@@ -56,6 +56,7 @@ export function CallScene({
   const answerLog = useRef<AnswerLog[]>([])
   const finalText = useRef('')
   const unitsRef = useRef(TOTAL_UNITS)
+  const recallCount = useRef(0)
   const idRef = useRef(0)
   const skipRef = useRef<(() => void) | null>(null)
   const alive = useRef(true)
@@ -90,6 +91,20 @@ export function CallScene({
       push({ who: 'future', text, final, voiced: opts.voiced && i === 0 })
       await wait(final ? 1600 : 350)
     }
+  }
+
+  /**
+   * 「確かにそうだった気がする」をランダムに差しこむ。
+   * 一度も出ないまま「今日の気持ち」まで来たら、そこで必ず一度出す。
+   */
+  const maybeRecall = async (key: string, value: string) => {
+    const forced = key === 'mood' && recallCount.current === 0
+    if (!forced && Math.random() >= RECALL_CHANCE) return
+    const line = recallFor(key, value, ctx.current)
+    if (!line) return
+    recallCount.current++
+    await wait(500)
+    await say([line])
   }
 
   const spend = (n: number) => {
@@ -142,6 +157,7 @@ export function CallScene({
     spend(4)
     await wait(400)
     if (c.reply) await say(c.reply)
+    if (!c.next) await maybeRecall(node.id, c.value)
     await runNode(c.next ?? node.next)
   }
 
@@ -156,6 +172,7 @@ export function CallScene({
     spend(4)
     await wait(400)
     if (node.inputReply) await say(node.inputReply(value))
+    if (value) await maybeRecall(node.input.key, 'input')
     await runNode(node.next)
   }
 
