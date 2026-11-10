@@ -1,0 +1,87 @@
+import { useEffect, useRef } from 'react'
+import type { Settings } from '../lib/storage'
+
+export function SettingsDialog({
+  open,
+  settings,
+  ambientAvailable,
+  onChange,
+  onClose,
+}: {
+  open: boolean
+  settings: Settings
+  ambientAvailable: boolean | null
+  onChange: (s: Settings) => void
+  onClose: () => void
+}) {
+  const ref = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const d = ref.current
+    if (!d) return
+    if (open && !d.open) d.showModal()
+    if (!open && d.open) d.close()
+  }, [open])
+
+  const motionValue = settings.reduceMotion === null ? 'auto' : settings.reduceMotion ? 'on' : 'off'
+
+  return (
+    <dialog ref={ref} className="sheet" aria-labelledby="settings-title" onClose={onClose} onCancel={onClose}>
+      <h2 id="settings-title">設定</h2>
+
+      <div className="setting">
+        <label htmlFor="vol">音量</label>
+        <input
+          id="vol"
+          type="range"
+          min={0}
+          max={1}
+          step={0.05}
+          value={settings.volume}
+          onChange={(e) => onChange({ ...settings, volume: Number(e.target.value), muted: false })}
+        />
+      </div>
+
+      <div className="setting row">
+        <span id="mute-label">音を消す</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={settings.muted}
+          aria-labelledby="mute-label"
+          className={`switch${settings.muted ? ' on' : ''}`}
+          onClick={() => onChange({ ...settings, muted: !settings.muted })}
+        >
+          <span />
+        </button>
+      </div>
+
+      <fieldset className="setting">
+        <legend>アニメーション</legend>
+        {(
+          [
+            ['auto', '端末の設定に合わせる'],
+            ['on', '減らす'],
+            ['off', '減らさない'],
+          ] as const
+        ).map(([v, label]) => (
+          <label key={v} className="radio">
+            <input
+              type="radio"
+              name="motion"
+              value={v}
+              checked={motionValue === v}
+              onChange={() => onChange({ ...settings, reduceMotion: v === 'auto' ? null : v === 'on' })}
+            />
+            {label}
+          </label>
+        ))}
+      </fieldset>
+
+      {ambientAvailable === false && <p className="note left">この天気の環境音は、いま用意されていません。字幕と効果音で進みます。</p>}
+
+      <button type="button" className="btn primary" onClick={onClose}>
+        とじる
+      </button>
+    </dialog>
+  )
+}
