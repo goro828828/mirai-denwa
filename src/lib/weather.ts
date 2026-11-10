@@ -42,8 +42,21 @@ export function classify(code: number): { kind: WeatherKind; label: string } {
 export type AmbientKey = 'clear-day' | 'clear-night' | 'cloudy-day' | 'cloudy-night' | 'rain' | 'thunder'
 
 /**
+ * 環境音ファイルと音量。音源の出典とライセンスは public/audio/ambient/CREDITS.md と lib/credits.ts を参照。
+ * 曇りは専用の音源がまだ無いため、暫定で晴れと同じ音源を少し小さく流す（未確定）。
+ */
+export const AMBIENT_SOURCES: Record<AmbientKey, { file: string; level: number }> = {
+  'clear-day': { file: 'clear-day', level: 1 },
+  'clear-night': { file: 'clear-night', level: 1 },
+  'cloudy-day': { file: 'clear-day', level: 0.55 },
+  'cloudy-night': { file: 'clear-night', level: 0.55 },
+  rain: { file: 'rain', level: 1 },
+  thunder: { file: 'thunder', level: 1 },
+}
+
+/**
  * 天気と時間帯 → 環境音
- * 雪は仕様の表にないため、暫定で「曇り」と同じ静かな環境音にしている（未確定）。
+ * 雪は仕様の表にないため、暫定で「曇り」と同じ扱いにしている（未確定）。
  */
 export function ambientFor(w: WeatherInfo | null): AmbientKey | null {
   if (!w) return null

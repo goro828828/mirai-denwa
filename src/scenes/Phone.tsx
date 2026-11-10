@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Payphone, type SlotState } from '../components/Payphone'
 import { CardForm, CardPrinted } from '../components/PhoneCard'
-import type { CallRecord, Profile, WeatherInfo } from '../types'
+import type { CallRecord, Profile, WeatherInfo, WeatherKind } from '../types'
 import { findPref } from '../data/prefectures'
 import { sound } from '../lib/sound'
 import { TOTAL_UNITS } from '../lib/cardImage'
@@ -14,11 +14,14 @@ export function PhoneScene({
   profile,
   weather,
   onConnected,
+  onManualWeather,
 }: {
   profile: Profile
   /** undefined = 取得中、null = 取得できなかった */
   weather: WeatherInfo | null | undefined
   onConnected: () => void
+  /** 天気を取得できなかったときに、プレイヤーが自分で空を選ぶ（任意） */
+  onManualWeather: (kind: WeatherKind) => void
 }) {
   const [stage, setStage] = useState<Stage>('idle')
   const [lcd, setLcd] = useState('受話器をあげてください')
@@ -93,9 +96,26 @@ export function PhoneScene({
     <section className="scene phone-scene">
       <p className="weather-note">
         {weather === undefined && `${pref?.name ?? ''}の天気を確認しています…`}
-        {weather === null && '天気を取得できなかったため、環境音なしで進みます。'}
-        {weather && `${pref?.name}（代表地点：${weather.station}）は いま${weather.label}`}
+        {weather === null && '天気を取得できませんでした。よかったら、いまの空を教えてください。'}
+        {weather && !weather.manual && `${pref?.name}（代表地点：${weather.station}）は いま${weather.label}`}
+        {weather?.manual && `いまの空：${weather.label}`}
       </p>
+      {weather === null && (
+        <div className="sky-pick" role="group" aria-label="いまの空を選ぶ（任意）">
+          {(
+            [
+              ['clear', '晴れ'],
+              ['cloudy', 'くもり'],
+              ['rain', '雨'],
+              ['thunder', '雷'],
+            ] as const
+          ).map(([k, label]) => (
+            <button type="button" key={k} className="chip small" onClick={() => onManualWeather(k)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <Payphone
         lifted={stage !== 'idle'}

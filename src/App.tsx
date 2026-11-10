@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CallRecord, Profile, WeatherInfo } from './types'
+import type { CallRecord, Profile, WeatherInfo, WeatherKind } from './types'
 import { findPref } from './data/prefectures'
 import { ambientFor, fetchWeather, timeOfDay } from './lib/weather'
 import { sound } from './lib/sound'
@@ -108,6 +108,13 @@ export default function App() {
     [profile, weather],
   )
 
+  const chooseSky = (kind: WeatherKind) => {
+    sound.unlock()
+    const h = new Date().getHours()
+    const label = { clear: '晴れ', cloudy: 'くもり', rain: '雨', thunder: '雷雨', snow: '雪' }[kind]
+    setWeather({ kind, label, isDay: h >= 5 && h < 18, station: '自分で選択', fetchedAt: new Date().toISOString(), manual: true })
+  }
+
   const openHistory = (from: Scene) => {
     sound.unlock()
     historyBack.current = from
@@ -154,7 +161,7 @@ export default function App() {
         {scene === 'title' && <TitleScene onStart={start} onHistory={() => openHistory('title')} historyCount={history.length} />}
         {scene === 'pickup' && <PickupScene reduced={reduced} onDone={() => setScene('fill')} />}
         {scene === 'fill' && <FillScene initial={loadDraft<Profile>()} onPrefChange={requestWeather} onDone={onFilled} />}
-        {scene === 'phone' && profile && <PhoneScene profile={profile} weather={weather} onConnected={() => setScene('call')} />}
+        {scene === 'phone' && profile && <PhoneScene profile={profile} weather={weather} onConnected={() => setScene('call')} onManualWeather={chooseSky} />}
         {scene === 'call' && profile && <CallScene profile={profile} weather={weather ?? null} reduced={reduced} onEnd={onCallEnd} />}
         {scene === 'eject' && record && <EjectScene record={record} reduced={reduced} onDone={() => setScene('result')} />}
         {scene === 'result' && record && (

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Settings } from '../lib/storage'
+import { AMBIENT_CREDITS } from '../lib/credits'
 
 export function SettingsDialog({
   open,
@@ -78,6 +79,30 @@ export function SettingsDialog({
       </fieldset>
 
       {ambientAvailable === false && <p className="note left">この天気の環境音は、いま用意されていません。字幕と効果音で進みます。</p>}
+
+      <details className="credits">
+        <summary>環境音のクレジット</summary>
+        <ul>
+          {AMBIENT_CREDITS.map((c) => (
+            <li key={c.use}>
+              <b>{c.use}</b>
+              <span>
+                「{c.title}」 {c.author}
+              </span>
+              <span>
+                <a href={c.licenseUrl} target="_blank" rel="noopener noreferrer">
+                  {c.license}
+                </a>
+                ・
+                <a href={c.source} target="_blank" rel="noopener noreferrer">
+                  出典
+                </a>
+              </span>
+              <span className="credit-note">{c.note}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
 
       <button type="button" className="btn primary" onClick={onClose}>
         とじる

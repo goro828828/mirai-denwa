@@ -130,6 +130,7 @@ export function CallScene({
 
     let voiced = false
     if (node.effect === 'voice') voiced = await sound.playVoice(profile.gender)
+    if (node.effect === 'listen') sound.duck(false)
     if (node.effect === 'lowcard') {
       sound.pip()
       unitsRef.current = 3
@@ -151,6 +152,8 @@ export function CallScene({
     setPending(null)
     sound.click()
     const label = resolveText(c.label, ctx.current)
+    // まわりの音を聞く場面が終わったら、通話の音量にゆっくり戻す
+    if (node.effect === 'listen') sound.duck(true)
     push({ who: 'me', text: label })
     if (node.answerKey) ctx.current.answers[node.answerKey] = c.value
     if (node.question) answerLog.current.push({ key: node.answerKey ?? node.id, question: node.question, answer: label })

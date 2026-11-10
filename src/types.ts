@@ -18,6 +18,8 @@ export interface WeatherInfo {
   /** 代表地点名（例：東京都 → 新宿） */
   station: string
   fetchedAt: string
+  /** 天気を取得できず、プレイヤーが自分で選んだ場合 true */
+  manual?: boolean
 }
 
 export interface AnswerLog {

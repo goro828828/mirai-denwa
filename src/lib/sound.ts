@@ -8,7 +8,7 @@
  * - 効果音（カード挿入・呼び出し音・終話音など）：Web Audio で合成。
  * - 音量は GainNode で制御（iOS Safari は audio.volume が効かないため）。
  */
-import type { AmbientKey } from './weather'
+import { AMBIENT_SOURCES, type AmbientKey } from './weather'
 import type { Gender } from '../types'
 
 const CROSSFADE_SEC = 6
@@ -45,6 +45,7 @@ class SoundManager {
   private tracks: Track[] = []
   private active = 0
   private ambientKey: AmbientKey | null = null
+  private ambientLevel = 1
   private fading = false
   private volume = 0.7
   private muted = false
@@ -95,7 +96,9 @@ class SoundManager {
     this.stopAmbient()
     this.ambientKey = key
     if (!key) return
-    const src = `${BASE}audio/ambient/${key}.mp3`
+    const source = AMBIENT_SOURCES[key]
+    this.ambientLevel = source.level
+    const src = `${BASE}audio/ambient/${source.file}.mp3`
     const a = new Track(this.ctx, this.ambientBus, src)
     const b = new Track(this.ctx, this.ambientBus, src)
     b.el.preload = 'none'
@@ -113,7 +116,7 @@ class SoundManager {
       .play()
       .then(() => {
         this.ambientAvailable = true
-        this.fadeTo(a, 1, 3)
+        this.fadeTo(a, this.ambientLevel, 3)
       })
       .catch(() => {
         /* 再生できない環境では無音で進行 */
@@ -130,7 +133,7 @@ class SoundManager {
     const next = this.tracks[1 - this.active]
     next.el.currentTime = 0
     void next.el.play().catch(() => {})
-    this.fadeTo(next, 1, CROSSFADE_SEC)
+    this.fadeTo(next, this.ambientLevel, CROSSFADE_SEC)
     this.fadeTo(t, 0, CROSSFADE_SEC)
     this.active = 1 - this.active
     window.setTimeout(() => {
