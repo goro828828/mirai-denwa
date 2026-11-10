@@ -10,6 +10,7 @@ export function formatDateTime(iso: string): string {
 
 export function weatherText(w: WeatherInfo | null): string {
   if (!w) return '—'
+  if (w.manual) return w.label
   return `${w.label}（${w.station}）`
 }
 

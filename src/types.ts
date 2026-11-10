@@ -20,6 +20,8 @@ export interface WeatherInfo {
   fetchedAt: string
   /** 天気を取得できず、プレイヤーが自分で選んだ場合 true */
   manual?: boolean
+  /** 取得元 */
+  source?: 'jma' | 'open-meteo' | 'manual'
 }
 
 export interface AnswerLog {

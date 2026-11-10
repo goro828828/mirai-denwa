@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CallRecord, Profile, WeatherInfo, WeatherKind } from './types'
 import { findPref } from './data/prefectures'
-import { ambientFor, fetchWeather, timeOfDay } from './lib/weather'
+import { ambientFor, fetchWeather, isDaytime, timeOfDay } from './lib/weather'
 import { sound } from './lib/sound'
 import { addHistory, clearHistory, deleteHistory, loadDraft, loadHistory, loadSettings, saveDraft, saveSettings, type Settings } from './lib/storage'
 import { FillScene, PickupScene, TitleScene } from './scenes/Intro'
@@ -110,9 +110,11 @@ export default function App() {
 
   const chooseSky = (kind: WeatherKind) => {
     sound.unlock()
+    const pref = profile ? findPref(profile.prefCode) : undefined
     const h = new Date().getHours()
+    const isDay = pref ? isDaytime(pref.lat, pref.lon) : h >= 6 && h < 18
     const label = { clear: '晴れ', cloudy: 'くもり', rain: '雨', thunder: '雷雨', snow: '雪' }[kind]
-    setWeather({ kind, label, isDay: h >= 5 && h < 18, station: '自分で選択', fetchedAt: new Date().toISOString(), manual: true })
+    setWeather({ kind, label, isDay, station: '自分で選択', fetchedAt: new Date().toISOString(), manual: true, source: 'manual' })
   }
 
   const openHistory = (from: Scene) => {

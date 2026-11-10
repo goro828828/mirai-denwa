@@ -115,7 +115,7 @@ const STEP_TITLE: Record<FormField, string> = {
 const STEP_HELP: Record<FormField, string> = {
   nickname: '未来の自分が、この名前であなたを呼びます。ニックネームで大丈夫です。',
   gender: '最初のひとことの声に使います。答えなくても遊べます。',
-  prefCode: '天気と話し方に使います。代表地点の天気を取得します（位置情報は使いません）。',
+  prefCode: '天気と話し方に使います。気象庁のその県の予報を使います（位置情報は使いません）。',
   lifestage: '会話の言葉選びに使います。',
 }
 

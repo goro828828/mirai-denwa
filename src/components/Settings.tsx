@@ -81,7 +81,7 @@ export function SettingsDialog({
       {ambientAvailable === false && <p className="note left">この天気の環境音は、いま用意されていません。字幕と効果音で進みます。</p>}
 
       <details className="credits">
-        <summary>環境音のクレジット</summary>
+        <summary>クレジット（環境音・天気）</summary>
         <ul>
           {AMBIENT_CREDITS.map((c) => (
             <li key={c.use}>
@@ -102,6 +102,13 @@ export function SettingsDialog({
             </li>
           ))}
         </ul>
+        <p className="credit-note">
+          天気：出典{' '}
+          <a href="https://www.jma.go.jp/" target="_blank" rel="noopener noreferrer">
+            気象庁ホームページ
+          </a>
+          （取得できないときは Open-Meteo）
+        </p>
       </details>
 
       <button type="button" className="btn primary" onClick={onClose}>

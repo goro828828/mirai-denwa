@@ -97,7 +97,10 @@ export function PhoneScene({
       <p className="weather-note">
         {weather === undefined && `${pref?.name ?? ''}の天気を確認しています…`}
         {weather === null && '天気を取得できませんでした。よかったら、いまの空を教えてください。'}
-        {weather && !weather.manual && `${pref?.name}（代表地点：${weather.station}）は いま${weather.label}`}
+        {weather && !weather.manual &&
+          (weather.source === 'jma'
+            ? `${pref?.name}${weather.station === pref?.name ? '' : `（${weather.station}）`}の今日の天気：${weather.label}（気象庁の予報）`
+            : `${pref?.name}（代表地点：${weather.station}）は いま${weather.label}`)}
         {weather?.manual && `いまの空：${weather.label}`}
       </p>
       {weather === null && (
