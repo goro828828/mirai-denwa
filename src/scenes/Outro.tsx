@@ -5,6 +5,7 @@ import { canShareFiles, saveCard, saveMode, shareCard, xIntentUrl } from '../lib
 import { formatDateTime, weatherText } from '../lib/format'
 import { CardPrinted, GENDER_LABEL, LIFESTAGE_LABEL } from '../components/PhoneCard'
 import { yearsLabel } from '../story/engine'
+import { HistoryCalendar } from '../components/HistoryCalendar'
 
 function useCardUrl(record: CallRecord | null) {
   const [url, setUrl] = useState<string | null>(null)
@@ -153,6 +154,8 @@ export function HistoryScene({
   const [openId, setOpenId] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [confirmAll, setConfirmAll] = useState(false)
+  /** 一覧（いつもの表示）か、カレンダーか */
+  const [view, setView] = useState<'list' | 'calendar'>('list')
   const open = records.find((r) => r.id === openId) ?? null
   const { url, blob } = useCardUrl(open)
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -160,6 +163,37 @@ export function HistoryScene({
   useEffect(() => {
     headingRef.current?.focus()
   }, [openId])
+
+  const renderList = (list: CallRecord[]) => (
+    <ul className="history-list">
+      {list.map((r) => (
+        <li key={r.id} className="history-item">
+          <button type="button" className="history-main" onClick={() => setOpenId(r.id)}>
+            <span className="h-date">{formatDateTime(r.createdAt)}</span>
+            <span className="h-meta">
+              {r.nickname}・{r.prefName}・{weatherText(r.weather)}
+            </span>
+            <span className="h-msg">{r.finalMessage}</span>
+          </button>
+          {confirmId === r.id ? (
+            <div className="confirm" role="group" aria-label="削除の確認">
+              <span>この記録を削除しますか？</span>
+              <button type="button" className="btn danger small" onClick={() => onDelete(r.id)}>
+                削除する
+              </button>
+              <button type="button" className="btn ghost small" onClick={() => setConfirmId(null)}>
+                やめる
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="btn text small" onClick={() => setConfirmId(r.id)}>
+              削除
+            </button>
+          )}
+        </li>
+      ))}
+    </ul>
+  )
 
   if (open) {
     return (
@@ -197,34 +231,15 @@ export function HistoryScene({
         </div>
       ) : (
         <>
-          <ul className="history-list">
-            {records.map((r) => (
-              <li key={r.id} className="history-item">
-                <button type="button" className="history-main" onClick={() => setOpenId(r.id)}>
-                  <span className="h-date">{formatDateTime(r.createdAt)}</span>
-                  <span className="h-meta">
-                    {r.nickname}・{r.prefName}・{weatherText(r.weather)}
-                  </span>
-                  <span className="h-msg">{r.finalMessage}</span>
-                </button>
-                {confirmId === r.id ? (
-                  <div className="confirm" role="group" aria-label="削除の確認">
-                    <span>この記録を削除しますか？</span>
-                    <button type="button" className="btn danger small" onClick={() => onDelete(r.id)}>
-                      削除する
-                    </button>
-                    <button type="button" className="btn ghost small" onClick={() => setConfirmId(null)}>
-                      やめる
-                    </button>
-                  </div>
-                ) : (
-                  <button type="button" className="btn text small" onClick={() => setConfirmId(r.id)}>
-                    削除
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
+          <div className="view-switch" role="group" aria-label="表示の切り替え">
+            <button type="button" aria-pressed={view === 'list'} className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>
+              一覧
+            </button>
+            <button type="button" aria-pressed={view === 'calendar'} className={view === 'calendar' ? 'on' : ''} onClick={() => setView('calendar')}>
+              カレンダー
+            </button>
+          </div>
+          {view === 'list' ? renderList(records) : <HistoryCalendar records={records} renderItems={renderList} />}
           {confirmAll ? (
             <div className="confirm" role="group" aria-label="すべて削除の確認">
               <span>{records.length}件の記録をすべて削除しますか？ 元に戻せません。</span>
