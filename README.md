@@ -2,6 +2,8 @@
 
 > いつか懐かしくなる今日を、あなたはどう過ごしますか。
 
+**公開中：https://goro828828.github.io/mirai-denwa/**
+
 10年後の自分と、不思議な公衆電話で話すスマートフォン向けのストーリー型Webゲームです。
 React + TypeScript + Vite で作っています。
 
@@ -80,7 +82,13 @@ npm run build    # dist/ に本番ビルド
 - モノラル・80kbps の MP3（各約12MB）。ラウドネスをそろえ、曲の終わりの6秒で先頭へクロスフェードしてループします。
 - 「もしもし？」の音声ファイル（`public/audio/voice/moshimoshi-*.mp3`）はまだ入っていません。無い間は字幕だけで進みます。
 
-## 公開のしかた（いちばん確実な方法：Netlify Drop）
+## 公開のしかた（GitHub Pages）
+
+いまは GitHub Pages で公開しています。`gh-pages` ブランチの中身が、そのまま https://goro828828.github.io/mirai-denwa/ に出ます。
+
+更新するときは `npm run build` で `dist/` を作り、その中身（と空の `.nojekyll`）を `gh-pages` ブランチに置き換えて push します。共有カードに載るURLは `.env.production` の `VITE_SITE_URL` で決まります。
+
+## 別の公開方法：Netlify Drop
 
 `npm run build` で作られる `dist/` フォルダを、そのままアップロードするだけで公開できます。サーバー側の設定は不要です。
 
