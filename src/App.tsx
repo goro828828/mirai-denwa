@@ -221,8 +221,8 @@ export default function App() {
     window.setTimeout(() => {
       setScene('phone')
       setWarp('in')
-      window.setTimeout(() => setWarp('none'), 2300)
-    }, 1600)
+      window.setTimeout(() => setWarp('none'), 1200)
+    }, 800)
   }
 
   const onCallEnd = useCallback(
