@@ -158,6 +158,11 @@ export function HistoryScene({
   const [view, setView] = useState<'list' | 'calendar'>('list')
   const open = records.find((r) => r.id === openId) ?? null
   const { url, blob } = useCardUrl(open)
+  /** 表示を切り替えたら、いつも画面の先頭から見せる（切り替えボタンの位置がずれないように） */
+  const switchView = (v: 'list' | 'calendar') => {
+    setView(v)
+    window.scrollTo(0, 0)
+  }
   const headingRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
@@ -221,7 +226,7 @@ export function HistoryScene({
       <h2 className="scene-title" tabIndex={-1} ref={headingRef}>
         通話履歴
       </h2>
-      <p className="note left">履歴はこの端末のブラウザにだけ保存されています。端末の変更やブラウザのデータ削除で消えることがあります。</p>
+      <p className="note left history-note">履歴はこの端末のブラウザにだけ保存されています。端末の変更やブラウザのデータ削除で消えることがあります。</p>
       {records.length === 0 ? (
         <div className="empty">
           <p>まだ通話の記録はありません。</p>
@@ -232,10 +237,10 @@ export function HistoryScene({
       ) : (
         <>
           <div className="view-switch" role="group" aria-label="表示の切り替え">
-            <button type="button" aria-pressed={view === 'list'} className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>
+            <button type="button" aria-pressed={view === 'list'} className={view === 'list' ? 'on' : ''} onClick={() => switchView('list')}>
               一覧
             </button>
-            <button type="button" aria-pressed={view === 'calendar'} className={view === 'calendar' ? 'on' : ''} onClick={() => setView('calendar')}>
+            <button type="button" aria-pressed={view === 'calendar'} className={view === 'calendar' ? 'on' : ''} onClick={() => switchView('calendar')}>
               カレンダー
             </button>
           </div>

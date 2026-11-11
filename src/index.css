@@ -1399,6 +1399,16 @@ html.call-lock body {
 }
 
 /* ---------- 履歴：一覧／カレンダーの切り替え ---------- */
+/* 上の説明文：一覧でもカレンダーでも、同じ大きさ・同じ行の高さ */
+.history-scene .history-note,
+.cal-summary,
+.cal-detail .note {
+  font-size: 13px;
+  line-height: 22px;
+}
+.history-scene .history-note {
+  margin: 0;
+}
 .view-switch {
   display: grid;
   grid-template-columns: 1fr 1fr;
