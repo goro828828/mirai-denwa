@@ -57,6 +57,23 @@ export function SettingsDialog({
       </div>
 
       <div className="setting row">
+        <span id="music-label">
+          BGM
+          <small className="setting-help">タイトル画面と、カードに文字が刻まれる場面で流れます</small>
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={settings.music}
+          aria-labelledby="music-label"
+          className={`switch${settings.music ? ' on' : ''}`}
+          onClick={() => onChange({ ...settings, music: !settings.music })}
+        >
+          <span />
+        </button>
+      </div>
+
+      <div className="setting row">
         <span id="loc-label">
           現在地の天気を使う
           <small className="setting-help">位置情報は天気にだけ使い、保存しません</small>
@@ -98,7 +115,7 @@ export function SettingsDialog({
       {ambientAvailable === false && <p className="note left">この天気の環境音は、いま用意されていません。字幕と効果音で進みます。</p>}
 
       <details className="credits">
-        <summary>クレジット（環境音・天気）</summary>
+        <summary>クレジット（BGM・環境音・天気）</summary>
         <ul>
           {AMBIENT_CREDITS.map((c) => (
             <li key={c.use}>
@@ -119,6 +136,9 @@ export function SettingsDialog({
             </li>
           ))}
         </ul>
+        <p className="credit-note">
+          BGM：「遠い放課後」（このゲームのためのオリジナル曲）。音色は FluidR3_GM サウンドフォント（Frank Wen ほか、MIT License）
+        </p>
         <p className="credit-note">
           天気：出典{' '}
           <a href="https://www.jma.go.jp/" target="_blank" rel="noopener noreferrer">

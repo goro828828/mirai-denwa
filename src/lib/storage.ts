@@ -50,8 +50,10 @@ export interface Settings {
   reduceMotion: boolean | null
   /** 現在地の天気を使う（位置情報の許可を求める） */
   useLocation: boolean
+  /** BGM（タイトル画面とカード印字の場面で流れる曲） */
+  music: boolean
 }
-export const DEFAULT_SETTINGS: Settings = { volume: 0.7, muted: false, reduceMotion: null, useLocation: true }
+export const DEFAULT_SETTINGS: Settings = { volume: 0.7, muted: false, reduceMotion: null, useLocation: true, music: true }
 export function loadSettings(): Settings {
   return { ...DEFAULT_SETTINGS, ...read<Partial<Settings>>(SETTINGS_KEY, {}) }
 }

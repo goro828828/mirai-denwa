@@ -5,6 +5,7 @@
  *   15分以上の音源をそのまま使う前提のため、全体をデコードせず <audio> 要素から流す。
  *   ループ時は2本の要素でクロスフェードして継ぎ目を目立たせない。
  *   ファイルが無い／読み込めない場合は無音で進行する。
+ * - BGM：public/audio/music/bgm.mp3（オリジナル曲）。タイトル画面とカード印字の場面だけで流す。設定で OFF にできる。
  * - 効果音（カード挿入・呼び出し音・終話音など）：Web Audio で合成。
  * - 音量は GainNode で制御（iOS Safari は audio.volume が効かないため）。
  */
@@ -14,6 +15,8 @@ import type { Gender } from '../types'
 const CROSSFADE_SEC = 6
 const AMBIENT_LEVEL = 0.8
 const DUCK_LEVEL = 0.3
+/** BGM の大きさ（環境音より少し控えめ） */
+const MUSIC_LEVEL = 0.55
 const BASE = import.meta.env.BASE_URL
 
 class Track {
@@ -37,16 +40,108 @@ class Track {
   }
 }
 
+/**
+ * 1本の長い音源を、2本の要素のクロスフェードで切れ目なくループ再生する
+ * （環境音と BGM で共通）
+ */
+class LoopPlayer {
+  private tracks: Track[] = []
+  private active = 0
+  private fading = false
+  private level = 1
+  key: string | null = null
+  private ctx: AudioContext
+  private bus: AudioNode
+  private onAvailable: (ok: boolean) => void
+  constructor(ctx: AudioContext, bus: AudioNode, onAvailable: (ok: boolean) => void = () => {}) {
+    this.ctx = ctx
+    this.bus = bus
+    this.onAvailable = onAvailable
+  }
+
+  play(key: string | null, src: string, level: number, fadeIn = 3) {
+    if (key === this.key) return
+    this.stop()
+    this.key = key
+    if (!key) return
+    this.level = level
+    const a = new Track(this.ctx, this.bus, src)
+    const b = new Track(this.ctx, this.bus, src)
+    b.el.preload = 'none'
+    this.tracks = [a, b]
+    this.active = 0
+    this.fading = false
+    a.el.addEventListener(
+      'error',
+      () => {
+        if (this.key !== key) return
+        this.onAvailable(false)
+        this.stop()
+      },
+      { once: true },
+    )
+    for (const t of this.tracks) t.el.addEventListener('timeupdate', () => this.checkLoop(t))
+    a.el
+      .play()
+      .then(() => {
+        if (this.key !== key) return
+        this.onAvailable(true)
+        this.fadeTo(a, this.level, fadeIn)
+      })
+      .catch(() => {
+        /* 再生できない環境では無音で進行 */
+      })
+  }
+
+  private checkLoop(t: Track) {
+    if (this.fading || this.tracks[this.active] !== t) return
+    const d = t.el.duration
+    if (!isFinite(d) || d < CROSSFADE_SEC * 3) return
+    if (d - t.el.currentTime > CROSSFADE_SEC) return
+    // 次のトラックへクロスフェード
+    this.fading = true
+    const next = this.tracks[1 - this.active]
+    next.el.currentTime = 0
+    void next.el.play().catch(() => {})
+    this.fadeTo(next, this.level, CROSSFADE_SEC)
+    this.fadeTo(t, 0, CROSSFADE_SEC)
+    this.active = 1 - this.active
+    window.setTimeout(() => {
+      t.el.pause()
+      t.el.currentTime = 0
+      this.fading = false
+    }, CROSSFADE_SEC * 1000 + 200)
+  }
+
+  private fadeTo(t: Track, value: number, sec: number) {
+    const now = this.ctx.currentTime
+    t.gain.gain.cancelScheduledValues(now)
+    t.gain.gain.setValueAtTime(t.gain.gain.value, now)
+    t.gain.gain.linearRampToValueAtTime(value, now + sec)
+  }
+
+  stop(fadeOut = 1.5) {
+    const old = this.tracks
+    this.tracks = []
+    this.key = null
+    for (const t of old) {
+      this.fadeTo(t, 0, fadeOut)
+      window.setTimeout(() => t.dispose(), fadeOut * 1000 + 200)
+    }
+  }
+}
+
 class SoundManager {
   private ctx: AudioContext | null = null
   private master!: GainNode
   private ambientBus!: GainNode
+  private musicBus!: GainNode
   private sfxBus!: GainNode
-  private tracks: Track[] = []
-  private active = 0
-  private ambientKey: AmbientKey | null = null
-  private ambientLevel = 1
-  private fading = false
+  private ambient: LoopPlayer | null = null
+  private music: LoopPlayer | null = null
+  /** BGM を流したい場面か（App が決める） */
+  private musicWanted = false
+  private musicOn = true
   private volume = 0.7
   private muted = false
   private loops = new Set<() => void>()
@@ -60,15 +155,26 @@ class SoundManager {
       this.ctx = new AC()
       this.master = this.ctx.createGain()
       this.ambientBus = this.ctx.createGain()
+      this.musicBus = this.ctx.createGain()
       this.sfxBus = this.ctx.createGain()
       this.ambientBus.connect(this.master)
+      this.musicBus.connect(this.master)
       this.sfxBus.connect(this.master)
       this.master.connect(this.ctx.destination)
       this.applyMaster()
       this.ambientBus.gain.value = AMBIENT_LEVEL
+      this.musicBus.gain.value = MUSIC_LEVEL
       this.sfxBus.gain.value = 0.5
+      this.ambient = new LoopPlayer(this.ctx, this.ambientBus, (ok) => (this.ambientAvailable = ok))
+      this.music = new LoopPlayer(this.ctx, this.musicBus)
     }
     if (this.ctx.state === 'suspended') void this.ctx.resume()
+    this.applyMusic()
+  }
+
+  /** いま audio を鳴らせる状態か（一度でも画面に触れたか） */
+  get unlocked() {
+    return this.ctx !== null
   }
 
   setVolume(v: number) {
@@ -85,6 +191,22 @@ class SoundManager {
     this.master.gain.setTargetAtTime(target, this.ctx.currentTime, 0.15)
   }
 
+  /** BGM の ON/OFF（設定） */
+  setMusicEnabled(on: boolean) {
+    this.musicOn = on
+    this.applyMusic()
+  }
+  /** BGM を流す場面かどうか（タイトル画面・カード印字の場面） */
+  setMusicScene(wanted: boolean) {
+    this.musicWanted = wanted
+    this.applyMusic()
+  }
+  private applyMusic() {
+    if (!this.music) return
+    if (this.musicOn && this.musicWanted) this.music.play('bgm', `${BASE}audio/music/bgm.mp3`, 1, 2.5)
+    else this.music.stop(2)
+  }
+
   /** 通話中は環境音を控えめにする */
   duck(on: boolean) {
     if (!this.ctx) return
@@ -92,73 +214,14 @@ class SoundManager {
   }
 
   playAmbient(key: AmbientKey | null) {
-    if (!this.ctx || key === this.ambientKey) return
-    this.stopAmbient()
-    this.ambientKey = key
-    if (!key) return
+    if (!this.ambient || key === this.ambient.key) return
+    if (!key) return this.ambient.stop()
     const source = AMBIENT_SOURCES[key]
-    this.ambientLevel = source.level
-    const src = `${BASE}audio/ambient/${source.file}.mp3`
-    const a = new Track(this.ctx, this.ambientBus, src)
-    const b = new Track(this.ctx, this.ambientBus, src)
-    b.el.preload = 'none'
-    this.tracks = [a, b]
-    this.active = 0
-    this.fading = false
-    const onError = () => {
-      if (this.ambientKey !== key) return
-      this.ambientAvailable = false
-      this.stopAmbient()
-    }
-    a.el.addEventListener('error', onError, { once: true })
-    for (const t of this.tracks) t.el.addEventListener('timeupdate', () => this.checkLoop(t))
-    a.el
-      .play()
-      .then(() => {
-        this.ambientAvailable = true
-        this.fadeTo(a, this.ambientLevel, 3)
-      })
-      .catch(() => {
-        /* 再生できない環境では無音で進行 */
-      })
-  }
-
-  private checkLoop(t: Track) {
-    if (!this.ctx || this.fading || this.tracks[this.active] !== t) return
-    const d = t.el.duration
-    if (!isFinite(d) || d < CROSSFADE_SEC * 3) return
-    if (d - t.el.currentTime > CROSSFADE_SEC) return
-    // 次のトラックへクロスフェード
-    this.fading = true
-    const next = this.tracks[1 - this.active]
-    next.el.currentTime = 0
-    void next.el.play().catch(() => {})
-    this.fadeTo(next, this.ambientLevel, CROSSFADE_SEC)
-    this.fadeTo(t, 0, CROSSFADE_SEC)
-    this.active = 1 - this.active
-    window.setTimeout(() => {
-      t.el.pause()
-      t.el.currentTime = 0
-      this.fading = false
-    }, CROSSFADE_SEC * 1000 + 200)
-  }
-
-  private fadeTo(t: Track, value: number, sec: number) {
-    if (!this.ctx) return
-    const now = this.ctx.currentTime
-    t.gain.gain.cancelScheduledValues(now)
-    t.gain.gain.setValueAtTime(t.gain.gain.value, now)
-    t.gain.gain.linearRampToValueAtTime(value, now + sec)
+    this.ambient.play(key, `${BASE}audio/ambient/${source.file}.mp3`, source.level)
   }
 
   stopAmbient() {
-    const old = this.tracks
-    this.tracks = []
-    this.ambientKey = null
-    for (const t of old) {
-      this.fadeTo(t, 0, 1.5)
-      window.setTimeout(() => t.dispose(), 1700)
-    }
+    this.ambient?.stop()
   }
 
   /** 最初の「もしもし？」だけ実際の声を使う。ファイルが無ければ字幕のみ。 */

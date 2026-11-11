@@ -146,6 +146,9 @@ p {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+.icon-btn.off svg {
+  opacity: 0.55;
+}
 
 /* ---------- ボタン ---------- */
 .btn {

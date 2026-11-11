@@ -75,8 +75,30 @@ export default function App() {
   useEffect(() => {
     sound.setVolume(settings.volume)
     sound.setMuted(settings.muted)
+    sound.setMusicEnabled(settings.music)
     saveSettings(settings)
   }, [settings])
+
+  // BGM：タイトル画面と、通話のあとカードに文字が刻まれる場面（カードを受け取る画面まで）で流す
+  useEffect(() => {
+    sound.setMusicScene(scene === 'title' || scene === 'eject' || scene === 'result')
+  }, [scene])
+
+  // ブラウザは、画面に触れるまで音を出せない。最初に触れたときに音を準備する（タイトル画面の BGM もここから始まる）
+  useEffect(() => {
+    if (sound.unlocked) return
+    const first = () => {
+      sound.unlock()
+      window.removeEventListener('pointerdown', first)
+      window.removeEventListener('keydown', first)
+    }
+    window.addEventListener('pointerdown', first)
+    window.addEventListener('keydown', first)
+    return () => {
+      window.removeEventListener('pointerdown', first)
+      window.removeEventListener('keydown', first)
+    }
+  }, [])
 
   // 場面が変わったら先頭へ（スクリーンリーダーにも場面転換を伝える）
   useEffect(() => {
@@ -215,6 +237,24 @@ export default function App() {
           ) : (
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M17 8.5a5 5 0 0 1 0 7M19.5 6a8.5 8.5 0 0 1 0 12" /></svg>
           )}
+        </button>
+        <button
+          type="button"
+          className={`icon-btn${settings.music ? '' : ' off'}`}
+          aria-label="BGM"
+          aria-pressed={settings.music}
+          title={settings.music ? 'BGMを止める' : 'BGMを流す'}
+          onClick={() => {
+            sound.unlock()
+            setSettings((s) => ({ ...s, music: !s.music }))
+          }}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 18V6l10-2v12" />
+            <circle cx="6.5" cy="18" r="2.5" />
+            <circle cx="16.5" cy="16" r="2.5" />
+            {!settings.music && <path d="M4 4l16 16" />}
+          </svg>
         </button>
         <button type="button" className="icon-btn" aria-label="設定" onClick={() => setSettingsOpen(true)}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" /></svg>
