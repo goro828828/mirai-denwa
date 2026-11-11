@@ -1899,3 +1899,18 @@ button.cal-day.selected {
   color: var(--on-bg);
   font-size: 15px;
 }
+
+/* 2回目以降：公衆電話の前へ移るときに、白くとぶ */
+.warp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: #fffaf0;
+}
+.warp-overlay.out {
+  animation: warp-out 1.6s ease-in forwards;
+}
+.warp-overlay.in {
+  pointer-events: none;
+  animation: warp-in 2.2s ease-out forwards;
+}

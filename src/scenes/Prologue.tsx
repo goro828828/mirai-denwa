@@ -28,7 +28,7 @@ function useLines(count: number, reduced: boolean, key: string) {
 }
 
 const LOST: Record<'arrive' | 'phone' | 'booth', string[]> = {
-  arrive: ['……あれ？', '気がつくと、知らない畦道に立っていた。'],
+  arrive: ['……あれ？', '気がつくと、知らないあぜ道に立っていた。'],
   phone: ['……圏外。', 'どこにも、つながらない。'],
   booth: ['少し先で、街灯がひとつ、公衆電話を照らしている。', '手の中には、さっき拾ったテレフォンカード。'],
 }

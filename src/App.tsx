@@ -100,6 +100,8 @@ export default function App() {
   const [notice, setNotice] = useState('')
   /** 初回だけの導入の最中か（通話履歴がなく、まだ導入を見ていないとき） */
   const [prologue, setPrologue] = useState(false)
+  /** 公衆電話の前へ移るときの、白くとぶ演出（2回目以降。初回は導入の中で同じ演出がある） */
+  const [warp, setWarp] = useState<'none' | 'out' | 'in'>('none')
   const [history, setHistory] = useState<CallRecord[]>(() => loadHistory())
   const [settings, setSettings] = useState<Settings>(() => loadSettings())
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -213,7 +215,14 @@ export default function App() {
     }
     setProfile(p)
     requestWeather(p.prefCode)
-    setScene('phone')
+    if (prologue || reduced) return setScene('phone')
+    // 2回目以降：白くとんでから、公衆電話の前へ
+    setWarp('out')
+    window.setTimeout(() => {
+      setScene('phone')
+      setWarp('in')
+      window.setTimeout(() => setWarp('none'), 2300)
+    }, 1600)
   }
 
   const onCallEnd = useCallback(
@@ -414,6 +423,8 @@ export default function App() {
           />
         )}
       </main>
+
+      {warp !== 'none' && <div className={`warp-overlay ${warp}`} aria-hidden="true" />}
 
       <SettingsDialog
         open={settingsOpen}

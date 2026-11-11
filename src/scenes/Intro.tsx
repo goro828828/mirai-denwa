@@ -72,7 +72,7 @@ export function PickupScene({
   onWarp,
 }: {
   reduced: boolean
-  /** 初回だけの導入：拾った瞬間、知らない畦道へ（裏返さずに次の場面へ） */
+  /** 初回だけの導入：拾った瞬間、知らないあぜ道へ（裏返さずに次の場面へ） */
   onWarp?: () => void
   /** 登録済みの内容（2回目以降）。あれば記入済みのカードを出す */
   saved: Profile | null
