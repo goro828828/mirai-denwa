@@ -4,7 +4,20 @@ import { PREFECTURES, REGIONS } from '../data/prefectures'
 import type { Gender, LifeStage, Profile } from '../types'
 import { sound } from '../lib/sound'
 
-export function TitleScene({ onStart, onHistory, historyCount }: { onStart: () => void; onHistory: () => void; historyCount: number }) {
+export function TitleScene({
+  onStart,
+  onHistory,
+  historyCount,
+  saved,
+  onEditProfile,
+}: {
+  onStart: () => void
+  onHistory: () => void
+  historyCount: number
+  /** 登録済みの内容（2回目以降） */
+  saved: Profile | null
+  onEditProfile: () => void
+}) {
   return (
     <section className="scene title-scene">
       <div className="title-block">
@@ -22,6 +35,16 @@ export function TitleScene({ onStart, onHistory, historyCount }: { onStart: () =
         <button type="button" className="btn ghost" onClick={onHistory}>
           通話履歴{historyCount > 0 ? `（${historyCount}）` : ''}
         </button>
+        {saved && (
+          <p className="saved-profile">
+            <span>
+              {saved.nickname}（{PREFECTURES.find((p) => p.code === saved.prefCode)?.name}）として遊びます
+            </span>
+            <button type="button" className="btn text small" onClick={onEditProfile}>
+              登録内容を変更
+            </button>
+          </p>
+        )}
         <p className="note">音が出ます。音なしでも、字幕で最後まで遊べます。<br />現在地の天気を使うため、位置情報の許可をたずねます（任意・保存しません）。</p>
       </div>
     </section>
@@ -29,29 +52,55 @@ export function TitleScene({ onStart, onHistory, historyCount }: { onStart: () =
 }
 
 const PICKUP_LINES = ['いつもの帰り道。', '足もとに、見慣れないカードが一枚、落ちていた。']
+const PICKUP_LINES_AGAIN = ['いつもの帰り道。', 'また、あのカードが落ちていた。']
 
-export function PickupScene({ reduced, onDone }: { reduced: boolean; onDone: () => void }) {
-  const [shown, setShown] = useState(reduced ? PICKUP_LINES.length : 0)
+export function PickupScene({
+  reduced,
+  saved,
+  onDone,
+  onUse,
+  onEdit,
+}: {
+  reduced: boolean
+  /** 登録済みの内容（2回目以降）。あれば記入済みのカードを出す */
+  saved: Profile | null
+  /** 初めて：カードに書きこむ */
+  onDone: () => void
+  /** 2回目以降：このカードで電話をかける */
+  onUse: () => void
+  /** 2回目以降：書き直す */
+  onEdit: () => void
+}) {
+  const LINES = saved ? PICKUP_LINES_AGAIN : PICKUP_LINES
+  const [shown, setShown] = useState(reduced ? 2 : 0)
   const [stage, setStage] = useState<'ground' | 'front' | 'back'>('ground')
 
   useEffect(() => {
-    if (shown >= PICKUP_LINES.length) return
+    if (shown >= LINES.length) return
     const t = window.setTimeout(() => setShown((n) => n + 1), shown === 0 ? 500 : 1400)
     return () => window.clearTimeout(t)
-  }, [shown])
+  }, [shown, LINES.length])
 
-  const ready = shown >= PICKUP_LINES.length
+  const ready = shown >= LINES.length
 
   return (
     <section className="scene pickup-scene">
       <div className="narration" aria-live="polite">
-        {PICKUP_LINES.slice(0, shown).map((l) => (
+        {LINES.slice(0, shown).map((l) => (
           <p key={l} className="fade-in">
             {l}
           </p>
         ))}
         {stage !== 'ground' && (
-          <p className="fade-in">{stage === 'front' ? '拾い上げると、それは古いテレフォンカードだった。' : '裏には、なにかを書きこむ欄がある。'}</p>
+          <p className="fade-in">
+            {stage === 'front'
+              ? saved
+                ? '拾い上げると、見覚えのあるテレフォンカードだった。'
+                : '拾い上げると、それは古いテレフォンカードだった。'
+              : saved
+                ? '裏には、前に書いた文字が、そのまま残っている。'
+                : '裏には、なにかを書きこむ欄がある。'}
+          </p>
         )}
       </div>
 
@@ -75,7 +124,7 @@ export function PickupScene({ reduced, onDone }: { reduced: boolean; onDone: () 
               <CardFront />
             </div>
             <div className="flip-face flip-back">
-              <CardForm values={{}} />
+              <CardForm values={saved ?? {}} />
             </div>
           </div>
         )}
@@ -95,10 +144,20 @@ export function PickupScene({ reduced, onDone }: { reduced: boolean; onDone: () 
             裏返してみる
           </button>
         )}
-        {stage === 'back' && (
+        {stage === 'back' && !saved && (
           <button type="button" className="btn primary" onClick={onDone}>
             カードに書きこむ
           </button>
+        )}
+        {stage === 'back' && saved && (
+          <>
+            <button type="button" className="btn primary" onClick={onUse}>
+              このカードで電話をかける
+            </button>
+            <button type="button" className="btn ghost" onClick={onEdit}>
+              書き直す
+            </button>
+          </>
         )}
       </div>
     </section>
@@ -123,7 +182,10 @@ export function FillScene({
   initial,
   onPrefChange,
   onDone,
+  submitLabel = '公衆電話をさがす',
 }: {
+  /** 最後のボタンの文言（登録内容の変更だけのときは「保存する」） */
+  submitLabel?: string
   initial: Partial<Profile>
   onPrefChange: (code: string) => void
   onDone: (p: Profile) => void
@@ -257,7 +319,7 @@ export function FillScene({
             </button>
           )}
           <button type="submit" className="btn primary" disabled={!valid[field]}>
-            {isLast ? '公衆電話をさがす' : 'つぎへ'}
+            {isLast ? submitLabel : 'つぎへ'}
           </button>
         </div>
       </form>

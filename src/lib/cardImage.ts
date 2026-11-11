@@ -203,8 +203,8 @@ export async function renderCardPng(r: CallRecord): Promise<Blob> {
   // 挿絵（右上）
   const illust = await loadIllustration(illustrationOf(r))
   if (illust) {
-    const size = 250
-    ctx.drawImage(illust, right - size + 10, cy + 56, size, size)
+    const size = 340
+    ctx.drawImage(illust, right - size + 30, cy + 50, size, size)
   }
 
   // フッター

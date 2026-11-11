@@ -1312,9 +1312,9 @@ p {
 .pc-illust-print {
   position: absolute;
   top: 3cqw;
-  right: 4cqw;
-  width: 15cqw;
-  height: 15cqw;
+  right: 3.5cqw;
+  width: 22cqw;
+  height: 22cqw;
   pointer-events: none;
 }
 .pc-illust-print svg {
@@ -1362,4 +1362,27 @@ html.call-lock body {
   text-underline-offset: 3px;
   font-weight: 500;
   color: var(--sub);
+}
+
+.saved-profile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 8px;
+  font-size: 13px;
+  color: var(--on-bg-sub);
+  text-align: center;
+}
+.saved-profile .btn.text {
+  min-height: 44px;
+}
+.toast.notice {
+  position: fixed;
+  top: calc(64px + env(safe-area-inset-top));
+  left: 16px;
+  right: 16px;
+  z-index: 5;
+  max-width: 448px;
+  margin: 0 auto;
 }

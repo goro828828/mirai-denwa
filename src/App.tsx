@@ -10,10 +10,26 @@ import { EjectScene, PhoneScene } from './scenes/Phone'
 import { CallScene, type CallResult } from './scenes/Call'
 import { HistoryScene, ResultScene } from './scenes/Outro'
 import { SettingsDialog } from './components/Settings'
-import { pickYearsFor } from './story/engine'
+import { pickYearsFor, type PrevCall } from './story/engine'
 import { pickIllustration } from './lib/illustrations'
 
 type Scene = 'title' | 'pickup' | 'fill' | 'phone' | 'call' | 'eject' | 'result' | 'history'
+
+/** 4項目すべて記入済みなら、登録内容として使う */
+function completeProfile(p: Partial<Profile>): Profile | null {
+  return p.nickname && p.gender && p.prefCode && p.lifestage ? (p as Profile) : null
+}
+
+/** 前回の通話の要約（2回目以降の会話で触れる） */
+function prevFrom(r: CallRecord | undefined): PrevCall | undefined {
+  if (!r) return undefined
+  const text = r.answers.find((a) => a.key === 'topicText')?.answer
+  return {
+    hoursAgo: (Date.now() - new Date(r.createdAt).getTime()) / 36e5,
+    topic: r.topic,
+    topicText: text && text !== '（書かなかった）' ? text : undefined,
+  }
+}
 
 function usePrefersReducedMotion() {
   const q = '(prefers-reduced-motion: reduce)'
@@ -35,6 +51,14 @@ export default function App() {
   const [record, setRecord] = useState<CallRecord | null>(null)
   /** 今回つながる「何年後の自分」。カードを拾うたびにランダムで決める */
   const [years, setYears] = useState(10)
+  /** 今回が何回目の通話か、前回の通話の要約 */
+  const [callIndex, setCallIndex] = useState(1)
+  const [prev, setPrev] = useState<PrevCall | undefined>(undefined)
+  /** 登録内容（2回目以降は、いちいち書き直さずに使う） */
+  const [saved, setSaved] = useState<Profile | null>(() => completeProfile(loadDraft<Profile>()))
+  /** 記入画面を「登録内容の変更だけ」で開いたとき true */
+  const [editOnly, setEditOnly] = useState(false)
+  const [notice, setNotice] = useState('')
   const [history, setHistory] = useState<CallRecord[]>(() => loadHistory())
   const [settings, setSettings] = useState<Settings>(() => loadSettings())
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -82,9 +106,15 @@ export default function App() {
     sound.unlock()
     sound.click()
     setRecord(null)
-    // 履歴が10件たまるごとに、次の1回は10年前か100年後の自分（自動で抽選）
+    // 1〜3回目は10年後。4回目以降は10〜60年後、履歴が10件たまるごとに次の1回は10年前か100年後（自動で抽選）
     setYears(pickYearsFor(history.length))
+    setCallIndex(history.length + 1)
+    setPrev(prevFrom(history[0]))
+    setNotice('')
     setScene('pickup')
+    // 天気は通話のたびに取り直す（前回の天気を使い回さない）
+    weatherFor.current = null
+    setWeather(undefined)
     // 現在地の天気（任意）。許可されなければ、入力した都道府県の天気を使う
     hereWeather.current = null
     if (settings.useLocation) {
@@ -99,8 +129,16 @@ export default function App() {
   }
 
   const onFilled = (p: Profile) => {
-    setProfile(p)
     saveDraft(p)
+    setSaved(p)
+    if (editOnly) {
+      // 登録内容の変更だけ：タイトルへ戻る
+      setEditOnly(false)
+      setNotice('登録内容を変更しました。')
+      setScene('title')
+      return
+    }
+    setProfile(p)
     requestWeather(p.prefCode)
     setScene('phone')
   }
@@ -184,11 +222,40 @@ export default function App() {
       </div>
 
       <main ref={mainRef} tabIndex={-1} className="main">
-        {scene === 'title' && <TitleScene onStart={start} onHistory={() => openHistory('title')} historyCount={history.length} />}
-        {scene === 'pickup' && <PickupScene reduced={reduced} onDone={() => setScene('fill')} />}
-        {scene === 'fill' && <FillScene initial={loadDraft<Profile>()} onPrefChange={requestWeather} onDone={onFilled} />}
+        {scene === 'title' && (
+          <>
+            {notice && (
+              <p className="toast notice" role="status">
+                {notice}
+              </p>
+            )}
+            <TitleScene
+              onStart={start}
+              onHistory={() => openHistory('title')}
+              historyCount={history.length}
+              saved={saved}
+              onEditProfile={() => {
+                setNotice('')
+                setEditOnly(true)
+                setScene('fill')
+              }}
+            />
+          </>
+        )}
+        {scene === 'pickup' && (
+          <PickupScene
+            reduced={reduced}
+            saved={saved}
+            onDone={() => setScene('fill')}
+            onUse={() => saved && onFilled(saved)}
+            onEdit={() => setScene('fill')}
+          />
+        )}
+        {scene === 'fill' && (
+          <FillScene initial={saved ?? loadDraft<Profile>()} onPrefChange={requestWeather} onDone={onFilled} submitLabel={editOnly ? '保存する' : undefined} />
+        )}
         {scene === 'phone' && profile && <PhoneScene profile={profile} weather={weather} years={years} onConnected={() => setScene('call')} onManualWeather={chooseSky} />}
-        {scene === 'call' && profile && <CallScene profile={profile} weather={weather ?? null} years={years} reduced={reduced} onEnd={onCallEnd} />}
+        {scene === 'call' && profile && <CallScene profile={profile} weather={weather ?? null} years={years} callIndex={callIndex} prev={prev} reduced={reduced} onEnd={onCallEnd} />}
         {scene === 'eject' && record && <EjectScene record={record} reduced={reduced} onDone={() => setScene('result')} />}
         {scene === 'result' && record && (
           <>

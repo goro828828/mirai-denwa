@@ -22,7 +22,7 @@
  */
 import type { CallContext } from './engine'
 import { t, type Text, type Variant } from './text'
-import { TOPICS } from './topics'
+import { TOPICS, TOPIC_NOUN } from './topics'
 import { finalMessage } from './finals'
 
 export type { Text, Variant } from './text'
@@ -56,7 +56,8 @@ export interface StoryNode {
   input?: InputDef | ((c: CallContext) => InputDef)
   /** 自由入力のあとの返答 */
   inputReply?: (value: string, c: CallContext) => Variant[]
-  next?: string
+  /** 次の場面（会話の種類で変える場合は関数） */
+  next?: string | ((c: CallContext) => string)
   /** 特別な演出 */
   effect?: 'voice' | 'lowcard' | 'final' | 'listen'
 }
@@ -79,7 +80,128 @@ const WHY = (c: CallContext): Variant[] => [
   ),
 ]
 
+/** 「最近の◯◯」のあと：2回目は「ありがとう」の質問、それ以外は「よく話す人」 */
+const afterTopic = (c: CallContext) => (c.script === 'second' ? 'thanks' : 'people')
+
+/** 前回の電話から、どれくらいたったか */
+const sinceLine = (c: CallContext): Variant => {
+  const h = c.prev?.hoursAgo ?? 0
+  if (h < 20) return t('前の電話から、まだ少ししかたってない{ね}。')
+  const d = Math.max(1, Math.round(h / 24))
+  return t(`前の電話から、${d}日{だね}。`)
+}
+
+/** 前回の話題に触れる（書いた言葉があれば、それも） */
+const memoLines = (c: CallContext): Variant[] => {
+  const noun = c.prev?.topic ? TOPIC_NOUN[c.prev.topic] : undefined
+  const text = c.prev?.topicText
+  const lines: Variant[] = []
+  if (noun) lines.push(t(`この前は、${noun}の話をした{ね}。`, undefined, `この前は、${noun}の話をした{ね}。`))
+  if (text) lines.push(t(`「${text}」のこと、こっちも覚え{てる}{よ}。`, undefined, `「${text}」……ちゃんと覚え{てる}{よ}。`))
+  return lines
+}
+
 export const NODES: Record<string, StoryNode> = {
+  // ===================== 2回目（再会） =====================
+  open2: {
+    id: 'open2',
+    effect: 'voice',
+    say: () => [t('もしもし？')],
+    choices: () => [
+      { label: '……もしもし。また、あなた？', value: 'again', reply: [t('うん。また、つながった{ね}。')] },
+      { label: 'また、つながった', value: 'connected', reply: [t('うん。……よかった、また話せる。')] },
+    ],
+    next: 'intro2',
+  },
+
+  intro2: {
+    id: 'intro2',
+    question: '前の電話のあと、元気だった？',
+    answerKey: 'since',
+    say: (c) => [t(`${c.name}、また話せて、うれしい。`), sinceLine(c), t('そっちは、元気だった？')],
+    choices: () => [
+      { label: '元気だったよ', value: 'fine', reply: [t('よかった。……声で、なんとなくわかった{よ}。')] },
+      { label: 'まあまあかな', value: 'soso', reply: [t('まあまあ、か。それくらいが、ちょうど{いい}{よ}。')] },
+      { label: 'ちょっと疲れてた', value: 'tired', reply: [t('そっか。今日は、ゆっくり話そう{ね}。')] },
+    ],
+    next: 'memo2',
+  },
+
+  /** 前回の電話を、もう懐かしい思い出として語る（選択肢なし） */
+  memo2: {
+    id: 'memo2',
+    say: (c) => [...memoLines(c), t('あの電話も、こっちからは、もう懐かしい思い出なん{だよ}。')],
+    next: 'changed',
+  },
+
+  changed: {
+    id: 'changed',
+    question: '前の電話から、何か変わった？',
+    answerKey: 'changed',
+    say: () => [t('あれから、何か変わったこと、あった？')],
+    choices: () => [
+      { label: 'ちょっとだけあった', value: 'little', reply: [t('そっか。小さな変化って、あとで振り返ると、大事な目印になる{よ}。')] },
+      { label: '特に変わらない', value: 'same', reply: [t('変わらない毎日って、実は一番懐かしくなる{よ}。')] },
+      { label: 'よくわからない', value: 'unsure', reply: [t('うん。変化は、あとからしか見えないもん{だよ}。')] },
+    ],
+    next: 'topic',
+  },
+
+  thanks: {
+    id: 'thanks',
+    question: '最近、誰かに「ありがとう」って言った？',
+    answerKey: 'thanks',
+    say: () => [t('ねえ、最近、誰かに「ありがとう」って言った？')],
+    choices: () => [
+      { label: '言ったよ', value: 'said', reply: [t('{いい}{ね}。言った方も、言われた方も、あとで覚え{てる}もん{だよ}。')] },
+      { label: '言いそびれたかも', value: 'missed', reply: [t('明日、ひとことだけでも言ってみて。きっと、あとで{いい}思い出になる{よ}。')] },
+      { label: '思い出せない', value: 'forget', reply: [t('そっか。今日のどこかで、小さく言ってみて。')] },
+    ],
+    next: 'mood',
+  },
+
+  // ===================== 3回目以降（いつもの） =====================
+  open3: {
+    id: 'open3',
+    effect: 'voice',
+    say: () => [t('もしもし。', undefined, 'もしもし。……')],
+    choices: (c) => [
+      {
+        label: '……もしもし。いつもの？',
+        value: 'usual',
+        reply: [t('うん、いつもの{だよ}。', 'ふふ、うん。いつもの{だよ}。', 'ああ、いつもの{だよ}。')],
+      },
+      {
+        label: '今日は、何年後？',
+        value: 'years',
+        reply: [
+          t(
+            `今日も、${c.years}年後のこっちから{だよ}。`,
+            `今日は、${c.years}年後から{だよ}。……少し、年をとった{でしょ}？`,
+            `今日は、${c.years}年後から{だよ}。……ずいぶん、遠くまで来た{よ}。`,
+          ),
+        ],
+      },
+    ],
+    next: 'intro3',
+  },
+
+  intro3: {
+    id: 'intro3',
+    say: (c) => [
+      t(`${c.name}、今日もつながった{ね}。`, `${c.name}、今日もつながった{ね}。声が聞けて、うれしい{よ}。`, `${c.name}……今日も、つながった{ね}。`),
+      t(`こうして話すの、${c.callIndex}回目{だね}。`, undefined, `こうして話すのも、もう${c.callIndex}回目{だね}。`),
+      ...memoLines(c),
+      t('あの電話も、こっちからは、もう懐かしい。', undefined, 'あの電話も、今では遠い思い出{だよ}。'),
+    ],
+    choices: () => [
+      { label: 'もう、そんなに？', value: 'already', reply: [t('うん。こういう時間が、あとで一番懐かしくなる{よ}。', undefined, 'そう{だよ}。重ねた時間は、ちゃんと残るもん{だよ}。')] },
+      { label: '覚えててくれたんだ', value: 'remember', reply: [t('もちろん。自分のこと{だから}{ね}。', undefined, '忘れない{よ}。自分のこと{だから}{ね}。')] },
+    ],
+    next: 'sky',
+  },
+
+  // ===================== 1回目（初めての電話）／特別な相手 =====================
   open: {
     id: 'open',
     effect: 'voice',
@@ -182,7 +304,7 @@ export const NODES: Record<string, StoryNode> = {
     answerKey: 'topicYN',
     say: (c) => [TOPICS[c.topic].ask],
     choices: (c) => [{ label: 'あるよ', value: 'yes', next: 'topicInput' }, ...TOPICS[c.topic].others],
-    next: 'people',
+    next: afterTopic,
   },
 
   topicInput: {
@@ -190,7 +312,7 @@ export const NODES: Record<string, StoryNode> = {
     question: (c) => TOPICS[c.topic].input.question,
     input: (c) => ({ key: 'topicText', prompt: TOPICS[c.topic].input.prompt, placeholder: TOPICS[c.topic].input.placeholder, maxLength: 20 }),
     inputReply: (value, c) => TOPICS[c.topic].inputReply(value),
-    next: 'people',
+    next: afterTopic,
   },
 
   people: {
@@ -258,8 +380,10 @@ export const NODES: Record<string, StoryNode> = {
   nowscape: {
     id: 'nowscape',
     effect: 'listen',
-    say: () => [
-      t('ひとつ、お願いしていい？', undefined, 'ひとつ、お願いがある{よ}。', 'ねえ、ひとつお願いしていい？'),
+    say: (c) => [
+      c.script === 'first'
+        ? t('ひとつ、お願いしていい？', undefined, 'ひとつ、お願いがある{よ}。', 'ねえ、ひとつお願いしていい？')
+        : t('今日も、ひとつお願いしていい？', undefined, '今日も、ひとつお願いがある{よ}。'),
       t(
         '少しだけ画面から目を離して、まわりを見てみて。音とか、光とか。',
         undefined,
@@ -358,7 +482,15 @@ export const NODES: Record<string, StoryNode> = {
     effect: 'final',
     say: (c) => [
       finalMessage(c),
-      t(
+      c.script === 'second'
+        ? t(`じゃあね、${c.name}。……また、電話する{よ}。`)
+        : c.script === 'regular'
+          ? t(
+              `じゃあね、${c.name}。今日も、いつか懐かしくなる一日を。`,
+              `それじゃあ、${c.name}。今日も、いつか懐かしくなる一日を。`,
+              `それじゃあね、${c.name}。今日という日を、どうか大事に{ね}。`,
+            )
+          : t(
         `じゃあね、${c.name}。いつか懐かしくなる今日を、よろしく{ね}。`,
         `それじゃあ、${c.name}。いつか懐かしくなる今日を、大事に{ね}。`,
         `それじゃあね、${c.name}。いつか懐かしくなる今日を、どうか大事に{ね}。`,

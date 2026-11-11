@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NODES, RECALL_CHANCE, recallFor, type Choice, type InputDef, type StoryNode, type Variant } from '../story/script'
-import { cleanInput, resolveText, speak, tierOf, yearsLabel, type CallContext } from '../story/engine'
+import { cleanInput, resolveText, scriptFor, speak, tierOf, yearsLabel, type CallContext, type PrevCall } from '../story/engine'
 import { pickTopic } from '../story/topics'
 import type { AnswerLog, Profile, WeatherInfo } from '../types'
 import { dialectFor } from '../data/dialects'
@@ -30,6 +30,10 @@ type Pending =
   | { kind: 'input'; node: StoryNode; input: InputDef }
   | null
 
+function nextOf(node: StoryNode, c: CallContext): string | undefined {
+  return typeof node.next === 'function' ? node.next(c) : node.next
+}
+
 function questionOf(node: StoryNode, c: CallContext): string | undefined {
   return typeof node.question === 'function' ? node.question(c) : node.question
 }
@@ -46,6 +50,8 @@ export function CallScene({
   profile,
   weather,
   years,
+  callIndex,
+  prev,
   reduced,
   onEnd,
 }: {
@@ -54,6 +60,10 @@ export function CallScene({
   reduced: boolean
   /** 何年後の自分につながったか */
   years: number
+  /** 何回目の通話か（1から） */
+  callIndex: number
+  /** 前回の通話（2回目以降） */
+  prev?: PrevCall
   onEnd: (r: CallResult) => void
 }) {
   const [log, setLog] = useState<Entry[]>([])
@@ -72,7 +82,10 @@ export function CallScene({
     hour: new Date().getHours(),
     years,
     tier: tierOf(years),
-    topic: pickTopic(),
+    topic: pickTopic(Math.random, prev?.topic),
+    callIndex,
+    script: scriptFor(callIndex, years),
+    prev,
     answers: {},
   })
   const answerLog = useRef<AnswerLog[]>([])
@@ -202,7 +215,7 @@ export function CallScene({
       setInputValue('')
       const input = typeof node.input === 'function' ? node.input(ctx.current) : node.input
       setPending({ kind: 'input', node, input })
-    } else await runNode(node.next)
+    } else await runNode(nextOf(node, ctx.current))
   }
 
   const choose = async (node: StoryNode, c: Choice) => {
@@ -219,7 +232,7 @@ export function CallScene({
     await wait(400)
     if (c.reply) await say(c.reply)
     if (!c.next) await maybeRecall(node.id, c.value)
-    await runNode(c.next ?? node.next)
+    await runNode(c.next ?? nextOf(node, ctx.current))
   }
 
   const submitInput = async (node: StoryNode, input: InputDef, skip: boolean) => {
@@ -235,7 +248,7 @@ export function CallScene({
     await wait(400)
     if (node.inputReply) await say(node.inputReply(value, ctx.current))
     if (value) await maybeRecall(input.key, 'input')
-    await runNode(node.next)
+    await runNode(nextOf(node, ctx.current))
   }
 
   useEffect(() => {
@@ -243,7 +256,8 @@ export function CallScene({
     if (!started.current) {
       started.current = true
       sound.duck(true)
-      void runNode('open')
+      // 会話の種類（初回・2回目・いつもの）で、始まりの場面を変える
+      void runNode({ first: 'open', second: 'open2', regular: 'open3' }[ctx.current.script])
     }
     return () => {
       alive.current = false

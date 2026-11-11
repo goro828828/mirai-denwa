@@ -168,6 +168,18 @@ export const TOPICS: Record<string, Topic> = {
 
 export const TOPIC_KEYS = Object.keys(TOPICS)
 
-export function pickTopic(rand = Math.random): string {
-  return TOPIC_KEYS[Math.floor(rand() * TOPIC_KEYS.length)]
+/** 話題をランダムに選ぶ。avoid（前回の話題）は避ける */
+export function pickTopic(rand = Math.random, avoid?: string): string {
+  const keys = TOPIC_KEYS.filter((k) => k !== avoid)
+  return keys[Math.floor(rand() * keys.length)]
+}
+
+/** 前回の話題を、会話の中で呼ぶときの言い方 */
+export const TOPIC_NOUN: Record<string, string> = {
+  food: 'おいしいもの',
+  laugh: '笑ったこと',
+  scene: 'きれいな景色',
+  music: 'よく聴く音楽',
+  place: 'よく行く場所',
+  passion: '夢中なこと',
 }

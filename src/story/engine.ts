@@ -35,8 +35,36 @@ export function pickYears(rand = Math.random): number {
  * 履歴が10件・20件…たまった次の通話は、10年前か100年後の自分（自動で抽選）。
  */
 export function pickYearsFor(historyCount: number, rand = Math.random): number {
-  if (historyCount > 0 && historyCount % SPECIAL_EVERY === 0) return SPECIAL_YEARS[Math.floor(rand() * SPECIAL_YEARS.length)]
+  // 1〜3回目は、いつも10年後の自分
+  if (historyCount < FIXED_FIRST_CALLS) return 10
+  // 4回目以降：履歴が10件・20件…たまった次の1回は特別な相手。それ以外は10〜60年後
+  if (historyCount % SPECIAL_EVERY === 0) return SPECIAL_YEARS[Math.floor(rand() * SPECIAL_YEARS.length)]
   return pickYears(rand)
+}
+
+/** 1〜3回目は10年後に固定 */
+export const FIXED_FIRST_CALLS = 3
+
+/**
+ * 会話の種類
+ * - first：初めての電話（1回目、または10年前・100年後の特別な相手）
+ * - second：2回目（再会。お互いに前の電話を覚えている）
+ * - regular：3回目以降（いつもの電話）
+ */
+export type ScriptKind = 'first' | 'second' | 'regular'
+
+export function scriptFor(callIndex: number, years: number): ScriptKind {
+  if (years < 0 || years >= 100 || callIndex <= 1) return 'first'
+  return callIndex === 2 ? 'second' : 'regular'
+}
+
+/** 前回の通話（2回目以降の会話で触れる） */
+export interface PrevCall {
+  /** 前回から何時間たったか */
+  hoursAgo: number
+  topic?: string
+  /** 前回「最近の◯◯」で書いた言葉（書いていなければ undefined） */
+  topicText?: string
 }
 
 /** 「10年後」「10年前」の表記 */
@@ -54,8 +82,14 @@ export interface CallContext {
   /** 何年後の自分か */
   years: number
   tier: AgeTier
-  /** 「最近の◯◯」枠に入る話題（通話ごとにランダム） */
+  /** 「最近の◯◯」枠に入る話題（通話ごとにランダム。前回と同じ話題は避ける） */
   topic: string
+  /** 何回目の通話か（1から） */
+  callIndex: number
+  /** 会話の種類（初回・2回目・いつもの） */
+  script: ScriptKind
+  /** 前回の通話（無ければ undefined） */
+  prev?: PrevCall
   /** answerKey → 選んだ value、または自由入力の文字列 */
   answers: Record<string, string>
 }
