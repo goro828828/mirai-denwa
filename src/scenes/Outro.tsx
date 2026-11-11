@@ -4,7 +4,7 @@ import { renderCardPng } from '../lib/cardImage'
 import { canShareFiles, saveCard, saveMode, shareCard, xIntentUrl } from '../lib/share'
 import { formatDateTime, weatherText } from '../lib/format'
 import { CardPrinted, GENDER_LABEL, LIFESTAGE_LABEL } from '../components/PhoneCard'
-import { yearsLabel } from '../story/engine'
+import { callerLabel } from '../story/engine'
 import { HistoryCalendar } from '../components/HistoryCalendar'
 
 function useCardUrl(record: CallRecord | null) {
@@ -119,7 +119,7 @@ export function ResultScene({ record, onHistory, onAgain }: { record: CallRecord
       <h2 className="scene-title">未来からのカード</h2>
       <div className="card-image">
         {url ? (
-          <img src={url} alt={`テレフォンカード。${yearsLabel(record.years ?? 10)}の${record.nickname}より：${record.finalMessage}`} />
+          <img src={url} alt={`テレフォンカード。${callerLabel(record.years ?? 10, record.nickname, record.relation)}より：${record.finalMessage}`} />
         ) : error ? (
           <CardPrinted record={record} />
         ) : (
@@ -210,7 +210,7 @@ export function HistoryScene({
           {formatDateTime(open.createdAt)}
         </h2>
         <div className="card-image">
-          {url ? <img src={url} alt={`テレフォンカード。${yearsLabel(open.years ?? 10)}の${open.nickname}より：${open.finalMessage}`} /> : <div className="card-skeleton" />}
+          {url ? <img src={url} alt={`テレフォンカード。${callerLabel(open.years ?? 10, open.nickname, open.relation)}より：${open.finalMessage}`} /> : <div className="card-skeleton" />}
         </div>
         <CardActions record={open} blob={blob} />
         <AnswerList record={open} />

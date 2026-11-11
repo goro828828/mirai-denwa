@@ -5,8 +5,17 @@ import type { CallRecord, Profile, WeatherInfo, WeatherKind } from '../types'
 import { findPref } from '../data/prefectures'
 import { sound } from '../lib/sound'
 import { TOTAL_UNITS } from '../lib/cardImage'
+import { DEFAULT_AGE, resolveDial } from '../story/engine'
 
-type Stage = 'idle' | 'lifted' | 'inserting' | 'dialing' | 'ringing'
+type Stage = 'idle' | 'lifted' | 'inserting' | 'input' | 'dialing' | 'ringing' | 'pastcall'
+
+/** 過去の自分は、すぐに電話を切ってしまう（年齢で言い方が変わる） */
+function pastLines(pastAge: number): string[] {
+  if (pastAge <= 12) return ['もしもし？ ……だれ？', '……知らない人と話しちゃだめって、言われてるから！']
+  if (pastAge <= 19) return ['……もしもし？ どちらさまですか？', '……え、未来？ いたずらなら、切りますね。']
+  if (pastAge <= 29) return ['はい、もしもし……？', '……すみません、今ちょっと手がはなせなくて。']
+  return ['はい、もしもし。', '……ごめんなさい、今立てこんでいて。また、あとで。']
+}
 
 const sleep = (ms: number) => new Promise((r) => window.setTimeout(r, ms))
 
@@ -16,13 +25,17 @@ export function PhoneScene({
   years,
   onConnected,
   onManualWeather,
+  dialMode = false,
 }: {
+  /** 自分から年代を選んでかける回 */
+  dialMode?: boolean
   profile: Profile
   /** 何年後の自分にかけるか */
   years: number
   /** undefined = 取得中、null = 取得できなかった */
   weather: WeatherInfo | null | undefined
-  onConnected: () => void
+  /** つながった（自分で選んだときは、その相手） */
+  onConnected: (to?: { years: number; relation?: string }) => void
   /** 天気を取得できなかったときに、プレイヤーが自分で空を選ぶ（任意） */
   onManualWeather: (kind: WeatherKind) => void
 }) {
@@ -34,6 +47,12 @@ export function PhoneScene({
   const dragStart = useRef<number | null>(null)
   const alive = useRef(true)
   const pref = findPref(profile.prefCode)
+  const age = profile.age ?? DEFAULT_AGE
+  const today = new Date()
+  const mmdd = `${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`
+  const [typed, setTyped] = useState('')
+  const [note, setNote] = useState('')
+  const [past, setPast] = useState<{ who: string; lines: string[] } | null>(null)
 
   useEffect(() => {
     alive.current = true
@@ -61,6 +80,12 @@ export function PhoneScene({
     setLcd(`残り ${TOTAL_UNITS} 度`)
     await sleep(700)
     if (!alive.current) return
+    if (dialMode) {
+      setStage('input')
+      setTyped('')
+      setLcd(`____.${mmdd.slice(0, 2)}.${mmdd.slice(2)}`)
+      return
+    }
     setStage('dialing')
     // ◯年後の今日へダイヤル
     const d = new Date()
@@ -87,12 +112,102 @@ export function PhoneScene({
     onConnected()
   }
 
+  // ---- 自分で年を押してかける ----
+  const showTyped = (v: string) => setLcd(`${v.padEnd(4, '_')}.${mmdd.slice(0, 2)}.${mmdd.slice(2)}`)
+  const press = (n: number) => {
+    if (stage !== 'input' || typed.length >= 4) return
+    const v = typed + n
+    setKey(n)
+    sound.key(n)
+    window.setTimeout(() => setKey(null), 150)
+    setTyped(v)
+    setNote('')
+    showTyped(v)
+  }
+  const erase = () => {
+    if (stage !== 'input') return
+    sound.click()
+    const v = typed.slice(0, -1)
+    setTyped(v)
+    showTyped(v)
+  }
+  /** うまくかけられなかったとき：表示を戻して、もう一度押してもらう */
+  const retry = async (lcdText: string, message: string) => {
+    setLcd(lcdText)
+    setNote(message)
+    await sleep(1800)
+    if (!alive.current) return
+    setTyped('')
+    showTyped('')
+    setStage('input')
+  }
+  const call = async () => {
+    if (stage !== 'input') return
+    if (typed.length < 4) return setNote('年を4けたで押してください。')
+    const r = resolveDial(Number(typed), age, today.getFullYear())
+    if (r.kind === 'now') return retry('この番号には かけられません', '今の自分には、かけられないみたいだ。10年以上先か、過去の年を押してみよう。')
+    if (r.kind === 'tooFar') return retry('この番号には かけられません', 'その年には、つながらないみたいだ。さかのぼれるのは、10歳の自分までらしい。')
+    setStage('dialing')
+    setNote('')
+    // 月日（今日と同じ）が、ひとりでに押される
+    for (let i = 0; i < mmdd.length; i++) {
+      if (!alive.current) return
+      const n = Number(mmdd[i])
+      setKey(n)
+      sound.key(n)
+      await sleep(170)
+      setKey(null)
+      await sleep(90)
+    }
+    dialStop.current()
+    await sleep(500)
+    if (!alive.current) return
+    const label = `${typed}.${mmdd.slice(0, 2)}.${mmdd.slice(2)}`
+    if (r.kind === 'unreachable') {
+      setStage('ringing')
+      setLcd(`${label} つながりません`)
+      sound.busy()
+      await sleep(2600)
+      if (!alive.current) return
+      dialStop.current = sound.dialTone()
+      return retry('おかけになった年には つながりません', '……電話が、つながらない。遠すぎたのかもしれない。別の年を押してみよう。')
+    }
+    setStage('ringing')
+    setLcd(`${label} 呼び出し中`)
+    sound.ring(r.kind === 'past' ? 1 : 2)
+    await sleep(r.kind === 'past' ? 2600 : 5600)
+    if (!alive.current) return
+    if (r.kind === 'past') {
+      // 過去の自分は、すぐに切ってしまう
+      setStage('pastcall')
+      const lines = pastLines(r.pastAge)
+      setPast({ who: `${r.back}年前の自分（${r.pastAge}歳）`, lines: [] })
+      for (const l of lines) {
+        await sleep(1300)
+        if (!alive.current) return
+        setPast((p) => p && { ...p, lines: [...p.lines, l] })
+      }
+      await sleep(1400)
+      if (!alive.current) return
+      sound.busy()
+      setPast((p) => p && { ...p, lines: [...p.lines, '（ガチャッ……ツー、ツー）'] })
+      await sleep(2200)
+      if (!alive.current) return
+      setPast(null)
+      dialStop.current = sound.dialTone()
+      return retry('もう一度 年を押してください', '……切られてしまった。もう一度、別の年にかけてみよう。')
+    }
+    onConnected({ years: r.years, relation: r.kind === 'kin' ? r.relation : undefined })
+  }
+
   const slot: SlotState = stage === 'idle' || stage === 'lifted' ? 'empty' : stage === 'inserting' ? 'inserting' : 'inside'
 
   let guide = '受話器をタップして、あげてください。'
   if (stage === 'lifted') guide = 'カードを上にスワイプするか、タップして差し込んでください。'
   if (stage === 'inserting') guide = 'カードが吸いこまれていく。'
-  if (stage === 'dialing') guide = years < 0 || years >= 100 ? '……いつもと、ちがう番号が押されていく。' : '番号が、ひとりでに押されていく。'
+  if (stage === 'input') guide = '今日は、番号がひとりでに押されない。……かけたい年を、自分で押してみよう。'
+  if (stage === 'pastcall') guide = '……誰かが出た。'
+  if (stage === 'dialing') guide = dialMode ? '月と日が、ひとりでに押されていく。' : years < 0 || years >= 100 ? '……いつもと、ちがう番号が押されていく。' : '番号が、ひとりでに押されていく。'
   if (stage === 'ringing') guide = '……呼び出し音が鳴っている。'
 
   return (
@@ -129,6 +244,7 @@ export function PhoneScene({
         lcd={lcd}
         slot={slot}
         activeKey={key}
+        onKey={stage === 'input' ? press : undefined}
         onHandset={stage === 'idle' ? lift : undefined}
         handsetLabel="受話器をあげる"
       />
@@ -136,6 +252,36 @@ export function PhoneScene({
       <p className="guide" aria-live="polite">
         {guide}
       </p>
+      {note && (
+        <p className="dial-note" role="status">
+          {note}
+        </p>
+      )}
+
+      {past && (
+        <div className="past-call" aria-live="polite">
+          <p className="past-who">{past.who}</p>
+          {past.lines.map((l) => (
+            <p key={l} className="bubble future fade-in">
+              {l}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {stage === 'input' && (
+        <div className="dial-pad" role="group" aria-label="かけたい年を押す">
+          <p className="dial-help">電話の押しボタンで、かけたい年（4けた）を押してください。日付は今日と同じです。未来は100歳の自分まで、過去は10歳の自分まで。</p>
+          <div className="dial-actions">
+            <button type="button" className="btn ghost" onClick={erase} disabled={!typed}>
+              1けた消す
+            </button>
+            <button type="button" className="btn primary" onClick={() => void call()} disabled={typed.length < 4}>
+              かける
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="insert-zone">
         {(stage === 'lifted' || stage === 'inserting') && (

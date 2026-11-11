@@ -6,7 +6,7 @@
  * t(10年後, 20〜30年後, 40〜60年後, 10年前, 100年後)。100年後は省略時、40〜60年後の台詞を使う。
  */
 import type { CallContext } from './engine'
-import { me, t, type Text, type Variant } from './text'
+import { ag, me, t, type Text, type Variant } from './text'
 
 export interface Topic {
   /** 通話履歴に残す質問 */
@@ -164,6 +164,26 @@ export const TOPICS: Record<string, Topic> = {
         : SECRET,
     recall: (c) => t(`${text(c)}……ああ、確かに夢中だった気がする。`, undefined, `${text(c)}……ああ、夢中だった{ね}。`, `${text(c)}……覚えておく。未来の自分の、夢中なもの。`),
   },
+}
+
+/**
+ * 子孫（孫〜雲孫）が出たときの言い方。会ったことのない昔の「今日」を、聞かせてもらう立場で話す
+ * [たずね方, 1つめの選択肢への返事, 2つめの選択肢への返事, 書いてくれたときの返事]
+ */
+const KIN: Record<string, [string, string, string, (v: string) => string]> = {
+  food: ['ねえ、そっちで最近「おいしい」って思ったもの、ある？', 'そっか。……今日は一口だけ、ちゃんと味わってみて。', '温かいもの、ひとつでいい{から}{ね}。', (v) => `${v}か。……昔の人も、それが好きだったんだ。`],
+  laugh: ['そっちで最近、声を出して笑ったこと、ある？', '何で笑ったかは忘れても、笑ってたなら、それで{いい}{よ}。', 'そっか……。こっちで笑ってる分、少し分けてあげたい{よ}。', (v) => `${v}か。ふふ、こっちまで笑っちゃった。`],
+  scene: ['そっちで最近、きれいだなって思った景色、ある？', '今日の帰り道、少しだけ顔を上げてみて。', '窓の外、ひと目だけ見てみて。', (v) => `${v}か。……こっちからも、見てみたかったな。`],
+  music: ['そっちで最近、よく聴いてる音楽ってある？', 'そっか。……昔の曲って、こっちではちょっと珍しいんだ。', '静かな時間も、{いい}{ね}。', (v) => `${v}か。……今度、探して聴いてみる{よ}。`],
+  place: ['そっちで最近、よく行く場所ってある？', 'いつもの道も、こっちから見ると、ちょっと特別{だよ}。', '家の時間も、大事{だね}。', (v) => `${v}か。……まだ残ってたら、行ってみたいな。`],
+  passion: ['そっちで最近、夢中になってること、ある？', '探してる途中か。……こっちも、まだ探してる{よ}。', 'そっか。……それでも、毎日ちゃんと過ごしてるん{だね}。', (v) => `${v}か。……かっこいい{ね}。ちゃんと伝わってる{よ}。`],
+}
+for (const [key, [ask, r1, r2, input]] of Object.entries(KIN)) {
+  const tp = TOPICS[key]
+  tp.ask = ag(tp.ask, { kin: ask })
+  tp.others = tp.others.map((o, i) => ({ ...o, reply: o.reply.map((v) => ag(v, { kin: i === 0 ? r1 : r2 })) }))
+  const base = tp.inputReply
+  tp.inputReply = (v) => (v ? base(v).map((x) => ag(x, { kin: input(v) })) : base(v))
 }
 
 export const TOPIC_KEYS = Object.keys(TOPICS)

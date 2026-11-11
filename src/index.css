@@ -1914,3 +1914,55 @@ button.cal-day.selected {
   pointer-events: none;
   animation: warp-in 1.1s ease-out forwards;
 }
+
+/* ---------- 自分で年を押してかける ---------- */
+.dial-pad {
+  background: var(--paper);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 14px 14px;
+  color: var(--ink);
+}
+.dial-help {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--sub);
+}
+.dial-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+}
+/* 押せる押しボタン（自分で年を押す回） */
+.pp-keys.pressable .pp-key {
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  height: 34px;
+}
+.pp-keys.pressable .pp-key:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.pp-keys.pressable .pp-key:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 #5f7d6e;
+}
+.dial-note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--on-bg);
+  text-align: center;
+}
+.past-call {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.past-who {
+  margin: 0;
+  font-size: 12px;
+  color: var(--on-bg-sub);
+}

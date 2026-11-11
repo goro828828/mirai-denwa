@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NODES, RECALL_CHANCE, recallFor, type Choice, type InputDef, type StoryNode, type Variant } from '../story/script'
-import { cleanInput, resolveText, scriptFor, speak, tierOf, yearsLabel, type CallContext, type PrevCall } from '../story/engine'
+import { DEFAULT_AGE, callerLabel, cleanInput, resolveText, scriptFor, speak, tierFor, type CallContext, type PrevCall } from '../story/engine'
 import { pickTopic } from '../story/topics'
 import type { AnswerLog, Profile, WeatherInfo } from '../types'
 import { dialectFor } from '../data/dialects'
@@ -52,6 +52,8 @@ export function CallScene({
   years,
   callIndex,
   prev,
+  relation,
+  dialed,
   reduced,
   onEnd,
 }: {
@@ -64,6 +66,10 @@ export function CallScene({
   callIndex: number
   /** 前回の通話（2回目以降） */
   prev?: PrevCall
+  /** 子孫が出たとき（「孫」など） */
+  relation?: string
+  /** 自分から年代を選んでかけた回 */
+  dialed?: boolean
   onEnd: (r: CallResult) => void
 }) {
   const [log, setLog] = useState<Entry[]>([])
@@ -81,10 +87,13 @@ export function CallScene({
     weather,
     hour: new Date().getHours(),
     years,
-    tier: tierOf(years),
+    age: profile.age ?? DEFAULT_AGE,
+    futureAge: (profile.age ?? DEFAULT_AGE) + years,
+    relation,
+    tier: tierFor(years, profile.age ?? DEFAULT_AGE, relation),
     topic: pickTopic(Math.random, prev?.topic),
     callIndex,
-    script: scriptFor(callIndex, years),
+    script: scriptFor(callIndex, years, dialed),
     prev,
     answers: {},
   })
@@ -257,7 +266,7 @@ export function CallScene({
       started.current = true
       sound.duck(true)
       // 会話の種類（初回・2回目・いつもの）で、始まりの場面を変える
-      void runNode({ first: 'open', second: 'open2', regular: 'open3' }[ctx.current.script])
+      void runNode({ first: 'open', second: 'open2', regular: 'open3', dialed: 'open4' }[ctx.current.script])
     }
     return () => {
       alive.current = false
@@ -340,7 +349,7 @@ export function CallScene({
             <span className={`dot${ended ? ' off' : ''}`} aria-hidden="true" />
             {ended ? '通話終了' : '通話中'}　<span className="mono">{formatDuration(elapsed)}</span>
           </p>
-          <p className="call-name">{yearsLabel(years)}の {profile.nickname}</p>
+          <p className="call-name">{callerLabel(years, profile.nickname, relation)}</p>
         </div>
         <div className="units" aria-label={`カードの残り ${units} 度`}>
           <span className="units-label">残り</span>
@@ -381,7 +390,7 @@ export function CallScene({
                 ♪
               </span>
             )}
-            {e.final && <span className="final-label">{yearsLabel(years)}の {profile.nickname} から、最後に</span>}
+            {e.final && <span className="final-label">{callerLabel(years, profile.nickname, relation)} から、最後に</span>}
             <p>{e.text}</p>
           </div>
         ))}

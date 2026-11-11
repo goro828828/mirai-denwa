@@ -6,6 +6,8 @@ export interface Profile {
   gender: Gender
   prefCode: string
   lifestage: LifeStage
+  /** いまの年齢（10〜90歳）。未来の自分の年齢＝年齢＋◯年後。古い登録には無い */
+  age?: number
 }
 
 export type WeatherKind = 'clear' | 'cloudy' | 'rain' | 'thunder' | 'snow'
@@ -48,4 +50,10 @@ export interface CallRecord {
   topic?: string
   /** カードの挿絵（lib/illustrations.ts のキー） */
   illustration?: string
+  /** 通話したときの年齢 */
+  age?: number
+  /** 自分ではなく子孫が出たとき（例：「孫」「玄孫」） */
+  relation?: string
+  /** 自分から年代を選んでかけた回 */
+  dialed?: boolean
 }

@@ -11,7 +11,7 @@ import { CallScene, type CallResult } from './scenes/Call'
 import { HistoryScene, ResultScene } from './scenes/Outro'
 import { LostScene, ReturnScene } from './scenes/Prologue'
 import { SettingsDialog } from './components/Settings'
-import { pickYearsFor, type PrevCall } from './story/engine'
+import { DEFAULT_AGE, isDialEvent, pickYearsFor, type PrevCall } from './story/engine'
 import { pickIllustration } from './lib/illustrations'
 import { seasonOf, type Season } from './components/TitleLandscape'
 import type { TimeOfDay } from './lib/weather'
@@ -37,6 +37,20 @@ function landscapePreview(): { season?: Season; tod?: TimeOfDay; weather?: Weath
 
 type Scene = 'title' | 'pickup' | 'lost' | 'fill' | 'phone' | 'call' | 'eject' | 'return' | 'result' | 'history'
 
+/** 自分から年代を選んでかけるイベントの抽選に使う、端末ごとの種 */
+const DIAL_SEED_KEY = 'mirai-denwa:dial-seed:v1'
+function dialSeed(): number {
+  try {
+    const v = Number(localStorage.getItem(DIAL_SEED_KEY))
+    if (v) return v
+    const seed = Math.floor(Math.random() * 2 ** 31) + 1
+    localStorage.setItem(DIAL_SEED_KEY, String(seed))
+    return seed
+  } catch {
+    return 12345
+  }
+}
+
 /** 初回だけの導入を見終わったか */
 const PROLOGUE_KEY = 'mirai-denwa:prologue-seen:v1'
 function prologueSeen(): boolean {
@@ -56,7 +70,7 @@ function markPrologueSeen() {
 
 /** 4項目すべて記入済みなら、登録内容として使う */
 function completeProfile(p: Partial<Profile>): Profile | null {
-  return p.nickname && p.gender && p.prefCode && p.lifestage ? (p as Profile) : null
+  return p.nickname && p.gender && p.age && p.prefCode && p.lifestage ? (p as Profile) : null
 }
 
 /** 前回の通話の要約（2回目以降の会話で触れる） */
@@ -93,6 +107,10 @@ export default function App() {
   /** 今回が何回目の通話か、前回の通話の要約 */
   const [callIndex, setCallIndex] = useState(1)
   const [prev, setPrev] = useState<PrevCall | undefined>(undefined)
+  /** 今回は、自分から年代を選んでかける回か */
+  const [dialed, setDialed] = useState(false)
+  /** 子孫が出たとき（「孫」など） */
+  const [relation, setRelation] = useState<string | undefined>(undefined)
   /** 登録内容（2回目以降は、いちいち書き直さずに使う） */
   const [saved, setSaved] = useState<Profile | null>(() => completeProfile(loadDraft<Profile>()))
   /** 記入画面を「登録内容の変更だけ」で開いたとき true */
@@ -181,8 +199,8 @@ export default function App() {
     sound.click()
     setRecord(null)
     // 1〜3回目は10年後。4回目以降は10〜60年後、履歴が10件たまるごとに次の1回は10年前か100年後（自動で抽選）
-    setYears(pickYearsFor(history.length))
     setCallIndex(history.length + 1)
+    setRelation(undefined)
     setPrev(prevFrom(history[0]))
     setNotice('')
     setPrologue(history.length === 0 && !prologueSeen())
@@ -215,6 +233,12 @@ export default function App() {
     }
     setProfile(p)
     requestWeather(p.prefCode)
+    // 相手の年代は、年齢がわかってから決める（未来の自分が100歳を超えない範囲）。
+    // 最初の3回のあと、15回ごとに1回は、自分から年代を選んでかける回になる
+    const ev = isDialEvent(history.length + 1, dialSeed())
+    setDialed(ev)
+    setRelation(undefined)
+    setYears(ev ? 10 : pickYearsFor(history.length, p.age ?? DEFAULT_AGE))
     if (prologue || reduced) return setScene('phone')
     // 2回目以降：白くとんでから、公衆電話の前へ
     setWarp('out')
@@ -242,6 +266,9 @@ export default function App() {
         usedUnits: r.usedUnits,
         years,
         topic: r.topic,
+        age: profile.age,
+        relation,
+        dialed: dialed || undefined,
       }
       rec.illustration = pickIllustration(rec)
       setSaveFailed(!addHistory(rec))
@@ -249,7 +276,7 @@ export default function App() {
       setRecord(rec)
       setScene('eject')
     },
-    [profile, weather, years],
+    [profile, weather, years, relation, dialed],
   )
 
   const chooseSky = (kind: WeatherKind) => {
@@ -388,8 +415,23 @@ export default function App() {
           <FillScene
             lead={prologue && !editOnly ? '電話の台でカードを裏返すと、名前を書く欄があった。' : undefined} initial={saved ?? loadDraft<Profile>()} onPrefChange={requestWeather} onDone={onFilled} submitLabel={editOnly ? '保存する' : prologue ? 'このカードで電話をかける' : undefined} />
         )}
-        {scene === 'phone' && profile && <PhoneScene profile={profile} weather={weather} years={years} onConnected={() => setScene('call')} onManualWeather={chooseSky} />}
-        {scene === 'call' && profile && <CallScene profile={profile} weather={weather ?? null} years={years} callIndex={callIndex} prev={prev} reduced={reduced} onEnd={onCallEnd} />}
+        {scene === 'phone' && profile && (
+          <PhoneScene
+            profile={profile}
+            weather={weather}
+            years={years}
+            dialMode={dialed}
+            onConnected={(to) => {
+              if (to) {
+                setYears(to.years)
+                setRelation(to.relation)
+              }
+              setScene('call')
+            }}
+            onManualWeather={chooseSky}
+          />
+        )}
+        {scene === 'call' && profile && <CallScene profile={profile} weather={weather ?? null} years={years} callIndex={callIndex} prev={prev} relation={relation} dialed={dialed} reduced={reduced} onEnd={onCallEnd} />}
         {scene === 'eject' && record && (
           <EjectScene
             record={record}

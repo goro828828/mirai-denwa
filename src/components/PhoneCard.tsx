@@ -3,17 +3,18 @@ import type { CallRecord, Gender, LifeStage } from '../types'
 import { findPref } from '../data/prefectures'
 import { formatDateTime, weatherText } from '../lib/format'
 import { TOTAL_UNITS } from '../lib/cardImage'
-import { yearsLabel } from '../story/engine'
+import { callerLabel } from '../story/engine'
 import { ILLUSTRATIONS, illustrationOf } from '../lib/illustrations'
 
 export const GENDER_LABEL: Record<Gender, string> = { male: '男性', female: '女性', other: 'その他', none: '回答しない' }
 export const LIFESTAGE_LABEL: Record<LifeStage, string> = { student: '学生', worker: '社会人', other: 'その他', none: '回答しない' }
 
-export type FormField = 'nickname' | 'gender' | 'prefCode' | 'lifestage'
+export type FormField = 'nickname' | 'gender' | 'age' | 'prefCode' | 'lifestage'
 
 interface FormValues {
   nickname?: string
   gender?: Gender
+  age?: number
   prefCode?: string
   lifestage?: LifeStage
 }
@@ -78,6 +79,7 @@ export function CardForm({ values, active, onSelect }: FormProps) {
   const rows: { key: FormField; label: string; value?: string }[] = [
     { key: 'nickname', label: 'おなまえ', value: values.nickname?.trim() || undefined },
     { key: 'gender', label: 'せいべつ', value: values.gender && GENDER_LABEL[values.gender] },
+    { key: 'age', label: 'ねんれい', value: values.age ? `${values.age}歳` : undefined },
     { key: 'prefCode', label: 'すまい', value: pref },
     { key: 'lifestage', label: 'いまの自分', value: values.lifestage && LIFESTAGE_LABEL[values.lifestage] },
   ]
@@ -156,7 +158,7 @@ export function CardPrinted({ record, printedChars }: PrintedProps) {
           <dt>てんき</dt>
           <dd>{weatherText(record.weather)}</dd>
         </dl>
-        <p className="pc-printed-from">{yearsLabel(record.years ?? 10)}の {record.nickname} より</p>
+        <p className="pc-printed-from">{callerLabel(record.years ?? 10, record.nickname, record.relation)} より</p>
         <p
           className="pc-printed-msg"
           aria-label={record.finalMessage}

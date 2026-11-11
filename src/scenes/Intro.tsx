@@ -1,3 +1,4 @@
+import { MAX_PLAYER_AGE, MIN_PLAYER_AGE } from '../story/engine'
 import type { WeatherKind } from '../types'
 import { TitleLandscape, skyIsDark, type Season } from '../components/TitleLandscape'
 import type { TimeOfDay } from '../lib/weather'
@@ -190,16 +191,19 @@ export function PickupScene({
   )
 }
 
-const STEPS: FormField[] = ['nickname', 'gender', 'prefCode', 'lifestage']
+const STEPS: FormField[] = ['nickname', 'gender', 'age', 'prefCode', 'lifestage']
+const AGES = Array.from({ length: MAX_PLAYER_AGE - MIN_PLAYER_AGE + 1 }, (_, i) => MIN_PLAYER_AGE + i)
 const STEP_TITLE: Record<FormField, string> = {
   nickname: 'なんて呼ばれたい？',
   gender: '性別は？',
+  age: 'いま、何歳？',
   prefCode: 'どこに住んでいる？',
   lifestage: 'いまの自分は？',
 }
 const STEP_HELP: Record<FormField, string> = {
   nickname: '未来の自分が、この名前であなたを呼びます。ニックネームで大丈夫です。',
   gender: '最初のひとことの声に使います。答えなくても遊べます。',
+  age: '未来の自分の年齢に使います（10〜90歳）。電話がつながるのは、未来の自分が100歳になるまでです。',
   prefCode: '話し方に使います。位置情報を許可していない場合は、天気にも使います。',
   lifestage: '会話の言葉選びに使います。',
 }
@@ -220,7 +224,11 @@ export function FillScene({
   onDone: (p: Profile) => void
 }) {
   const [values, setValues] = useState<Partial<Profile>>(initial)
-  const [step, setStep] = useState(0)
+  // 書きかけ（例：年齢だけ未記入の古い登録）は、まだ書いていない項目から始める
+  const [step, setStep] = useState(() => {
+    const i = STEPS.findIndex((f) => (f === 'nickname' ? !initial.nickname : !initial[f as keyof Profile]))
+    return i < 0 ? 0 : i
+  })
   const field = STEPS[step]
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null)
 
@@ -231,6 +239,7 @@ export function FillScene({
   const valid: Record<FormField, boolean> = {
     nickname: !!values.nickname?.trim(),
     gender: !!values.gender,
+    age: !!values.age && values.age >= MIN_PLAYER_AGE && values.age <= MAX_PLAYER_AGE,
     prefCode: !!values.prefCode,
     lifestage: !!values.lifestage,
   }
@@ -245,6 +254,7 @@ export function FillScene({
     onDone({
       nickname: values.nickname!.trim(),
       gender: values.gender!,
+      age: values.age!,
       prefCode: values.prefCode!,
       lifestage: values.lifestage!,
     })
@@ -312,6 +322,27 @@ export function FillScene({
           />
         )}
         {field === 'gender' && chips<Gender>(GENDER_LABEL, 'gender')}
+        {field === 'age' && (
+          <select
+            ref={(el) => {
+              inputRef.current = el
+            }}
+            className="select"
+            aria-labelledby="pen-title"
+            aria-describedby="pen-help"
+            value={values.age ?? ''}
+            onChange={(e) => setValues((v) => ({ ...v, age: Number(e.target.value) || undefined }))}
+          >
+            <option value="" disabled>
+              年齢を選ぶ
+            </option>
+            {AGES.map((a) => (
+              <option key={a} value={a}>
+                {a}歳
+              </option>
+            ))}
+          </select>
+        )}
         {field === 'prefCode' && (
           <select
             ref={(el) => {

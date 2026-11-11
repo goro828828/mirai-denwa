@@ -5,7 +5,7 @@
  */
 import type { CallRecord } from '../types'
 import { formatDateTime, weatherText } from './format'
-import { yearsLabel } from '../story/engine'
+import { callerLabel } from '../story/engine'
 import { illustrationOf, loadIllustration } from './illustrations'
 
 export const SITE_URL: string = import.meta.env.VITE_SITE_URL ?? ''
@@ -198,7 +198,7 @@ export async function renderCardPng(r: CallRecord): Promise<Blob> {
 
   ctx.fillStyle = C.accent
   ctx.font = `500 40px ${FONT}`
-  ctx.fillText(`${yearsLabel(r.years ?? 10)}の ${r.nickname} より`, left, fy + 56)
+  ctx.fillText(`${callerLabel(r.years ?? 10, r.nickname, r.relation)} より`, left, fy + 56)
 
   // メッセージ（長さに応じて文字サイズを調整。大きめから始めて、収まる大きさにする）
   const msgTop = fy + 150

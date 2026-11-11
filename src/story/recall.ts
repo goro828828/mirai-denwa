@@ -27,6 +27,8 @@ const RECALL: Record<string, Variant> = {
 export const RECALL_CHANCE = 0.4
 
 export function recallFor(nodeId: string, value: string, c: CallContext): Variant | null {
+  // 子孫は「振り返る」立場ではない
+  if (c.tier === 'kin') return null
   if (nodeId === 'topicText') return TOPICS[c.topic]?.recall(c) ?? null
   // 10年前の自分は「振り返る」立場ではないので、話題の自由入力以外では振り返らない
   if (c.tier === 'past') return null

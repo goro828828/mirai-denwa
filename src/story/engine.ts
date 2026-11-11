@@ -3,57 +3,146 @@ import { renderDialect, type DialectProfile } from '../data/dialects'
 import type { Text, Variant } from './text'
 
 /**
- * 話し方の年代
- * - young：10年後（今の延長。気さくな口調）
- * - middle：20・30年後（落ち着いた大人の口調）
- * - elder：40・50・60年後（年を重ねた、ゆっくり穏やかな口調）
+ * 話し方の年代（未来の自分の「年齢」＝ いまの年齢 ＋ ◯年後 で決める）
+ * - young：〜39歳（今の延長。気さくな口調）
+ * - middle：40〜59歳（落ち着いた大人の口調）
+ * - elder：60〜79歳（年を重ねた、ゆっくり穏やかな口調。70歳から、少し物忘れが出てくる）
+ * - eighty：80〜89歳（ゆっくり、ひと息ずつ話す。耳が少し遠い）
+ * - ninety：90〜100歳（言葉少なで、遠い記憶を手繰るように話す）
+ * - past：10年前の自分（特別）／century：100年後の自分（特別）
+ * - kin：自分の年代を越えた未来で、電話に出てくれる子孫（孫・ひ孫…雲孫。年はあなたと同じくらい）
+ * 2005年生まれ（21歳）を起点に作った台詞を、年齢で流用する：10年後＝31歳、20・30年後＝41・51歳、40〜50年後＝61・71歳、60年後＝81歳、70年後＝91歳
  */
-export type AgeTier = 'young' | 'middle' | 'elder' | 'past' | 'century'
+export type AgeTier = 'young' | 'middle' | 'elder' | 'eighty' | 'ninety' | 'past' | 'century' | 'kin'
 
-export const YEARS_CHOICES = [10, 20, 30, 40, 50, 60] as const
+/** 未来の自分の年齢の上限（これを超える年代には、自分は出ない） */
+export const MAX_AGE = 100
+/** 登録できる年齢 */
+export const MIN_PLAYER_AGE = 10
+export const MAX_PLAYER_AGE = 90
+/** 年齢が未登録の古いデータは、2005年生まれ（21歳）として扱う */
+export const DEFAULT_AGE = 21
+
+export const YEARS_CHOICES = [10, 20, 30, 40, 50, 60, 70, 80, 90] as const
 
 /** 10回に1回だけ現れる特別な相手 */
 export const SPECIAL_YEARS = [-10, 100] as const
 /** 履歴がこの件数たまるごとに、次の通話が特別になる */
 export const SPECIAL_EVERY = 10
 
-export function tierOf(years: number): AgeTier {
+/** 何年後の自分（または子孫）か → 話し方 */
+export function tierFor(years: number, age = DEFAULT_AGE, relation?: string): AgeTier {
+  if (relation) return 'kin'
   if (years < 0) return 'past'
   if (years >= 100) return 'century'
-  if (years >= 40) return 'elder'
-  if (years >= 20) return 'middle'
+  const a = age + years
+  if (a >= 90) return 'ninety'
+  if (a >= 80) return 'eighty'
+  if (a >= 60) return 'elder'
+  if (a >= 40) return 'middle'
   return 'young'
 }
 
-/** 何年後の自分につながるかを決める（通話ごとにランダム） */
-export function pickYears(rand = Math.random): number {
-  return YEARS_CHOICES[Math.floor(rand() * YEARS_CHOICES.length)]
+/** 何年後の自分につながるかを決める（通話ごとにランダム。未来の自分が100歳を超えない範囲） */
+export function pickYears(age = DEFAULT_AGE, rand = Math.random): number {
+  const ok = YEARS_CHOICES.filter((y) => age + y <= MAX_AGE)
+  const list = ok.length ? ok : [10]
+  return list[Math.floor(rand() * list.length)]
 }
 
 /**
  * これまでの通話履歴の件数から、今回つながる相手を決める。
- * 履歴が10件・20件…たまった次の通話は、10年前か100年後の自分（自動で抽選）。
+ * 1〜3回目は10年後。4回目以降は10〜90年後（100歳まで）。
+ * 履歴が10件・20件…たまった次の通話は、10年前か100年後の自分（10年前は、10歳より前にはさかのぼらない）。
  */
-export function pickYearsFor(historyCount: number, rand = Math.random): number {
-  // 1〜3回目は、いつも10年後の自分
+export function pickYearsFor(historyCount: number, age = DEFAULT_AGE, rand = Math.random): number {
   if (historyCount < FIXED_FIRST_CALLS) return 10
-  // 4回目以降：履歴が10件・20件…たまった次の1回は特別な相手。それ以外は10〜60年後
-  if (historyCount % SPECIAL_EVERY === 0) return SPECIAL_YEARS[Math.floor(rand() * SPECIAL_YEARS.length)]
-  return pickYears(rand)
+  if (historyCount % SPECIAL_EVERY === 0) {
+    const options = SPECIAL_YEARS.filter((y) => y > 0 || age + y >= MIN_PLAYER_AGE)
+    return options[Math.floor(rand() * options.length)]
+  }
+  return pickYears(age, rand)
 }
 
 /** 1〜3回目は10年後に固定 */
 export const FIXED_FIRST_CALLS = 3
 
 /**
+ * 自分から年代を選んでかけられる回（イベント）
+ * 最初の3回のあと、15回ごとの区切りの中で、必ずどこか1回だけ起きる（どの回かは区切りごとに抽選）。
+ * 抽選は端末ごとの種（seed）から決まるので、同じ区切りの中で結果が変わらない。
+ */
+export const DIAL_EVENT_SPAN = 15
+export function isDialEvent(callIndex: number, seed: number): boolean {
+  if (callIndex <= FIXED_FIRST_CALLS) return false
+  const k = callIndex - FIXED_FIRST_CALLS - 1
+  const cycle = Math.floor(k / DIAL_EVENT_SPAN)
+  return k % DIAL_EVENT_SPAN === dialEventPos(seed, cycle)
+}
+export function dialEventPos(seed: number, cycle: number): number {
+  // mulberry32
+  let x = (seed + cycle * 0x9e3779b9) >>> 0
+  x = Math.imul(x ^ (x >>> 15), x | 1)
+  x ^= x + Math.imul(x ^ (x >>> 7), x | 61)
+  const r = ((x ^ (x >>> 14)) >>> 0) / 4294967296
+  return Math.floor(r * DIAL_EVENT_SPAN)
+}
+
+/** 自分の年代を越えた未来に出る子孫（30年ごとに一代ずつ。雲孫まで） */
+export const RELATIONS = ['孫', 'ひ孫', '玄孫', '来孫', '昆孫', '仍孫', '雲孫'] as const
+export const RELATION_READING: Record<string, string> = {
+  孫: 'まご',
+  ひ孫: 'ひまご',
+  玄孫: 'やしゃご',
+  来孫: 'らいそん',
+  昆孫: 'こんそん',
+  仍孫: 'じょうそん',
+  雲孫: 'うんそん',
+}
+
+/** 自分でかけた番号（年）の結果 */
+export type DialResult =
+  | { kind: 'self'; years: number }
+  | { kind: 'kin'; years: number; relation: string }
+  | { kind: 'past'; back: number; pastAge: number }
+  | { kind: 'now' }
+  | { kind: 'tooFar' }
+  | { kind: 'unreachable' }
+
+/**
+ * かけた年から、誰につながるかを決める（日付は今日と同じ月日だけ）
+ * - 未来：年の差は10年単位に切り捨てる（例：32年後 → 30年後の自分と同じ内容）
+ *   自分が100歳を超える年代は子孫：100歳を超えた最初の30年が「孫」、そこから30年ごとに ひ孫・玄孫…雲孫。その先はつながらない
+ * - 過去：10歳の自分までさかのぼれる（すぐに切られてしまう）
+ */
+export function resolveDial(year: number, age = DEFAULT_AGE, nowYear = new Date().getFullYear()): DialResult {
+  const diff = year - nowYear
+  if (diff > 0) {
+    const years = Math.floor(diff / 10) * 10
+    if (years === 0) return { kind: 'now' }
+    const future = age + years
+    if (future <= MAX_AGE) return { kind: 'self', years }
+    const idx = Math.floor((future - MAX_AGE - 1) / 30)
+    if (idx >= RELATIONS.length) return { kind: 'unreachable' }
+    return { kind: 'kin', years, relation: RELATIONS[idx] }
+  }
+  if (diff === 0) return { kind: 'now' }
+  const back = -diff
+  if (age - back < MIN_PLAYER_AGE) return { kind: 'tooFar' }
+  return { kind: 'past', back, pastAge: age - back }
+}
+
+/**
  * 会話の種類
  * - first：初めての電話（1回目、または10年前・100年後の特別な相手）
  * - second：2回目（再会。お互いに前の電話を覚えている）
  * - regular：3回目以降（いつもの電話）
+ * - dialed：自分から年代を選んでかけた回（相手は、まさかかかってくるとは思っていない）
  */
-export type ScriptKind = 'first' | 'second' | 'regular'
+export type ScriptKind = 'first' | 'second' | 'regular' | 'dialed'
 
-export function scriptFor(callIndex: number, years: number): ScriptKind {
+export function scriptFor(callIndex: number, years: number, dialed = false): ScriptKind {
+  if (dialed) return 'dialed'
   if (years < 0 || years >= 100 || callIndex <= 1) return 'first'
   return callIndex === 2 ? 'second' : 'regular'
 }
@@ -97,6 +186,12 @@ export interface CallContext {
   hour: number
   /** 何年後の自分か */
   years: number
+  /** いまの年齢 */
+  age: number
+  /** 相手の年齢（自分なら いまの年齢＋◯年後。子孫・特別な相手では使わない） */
+  futureAge: number
+  /** 子孫が出たとき（「孫」など） */
+  relation?: string
   tier: AgeTier
   /** 「最近の◯◯」枠に入る話題（通話ごとにランダム。前回と同じ話題は避ける） */
   topic: string
@@ -115,17 +210,23 @@ export function resolveText(t: Text, c: CallContext): string {
 }
 
 export function speak(variant: Variant, c: CallContext): string {
-  const text =
-    c.tier === 'past'
-      ? variant.past ?? variant.young
-      : c.tier === 'century'
-        ? variant.century ?? variant.elder ?? variant.middle ?? variant.young
-        : c.tier === 'elder'
-          ? variant.elder ?? variant.middle ?? variant.young
-          : c.tier === 'middle'
-            ? variant.middle ?? variant.young
-            : variant.young
-  return renderDialect(resolveText(text, c), c.dialect)
+  const v = variant
+  const pick: Record<AgeTier, () => Text> = {
+    young: () => v.young,
+    middle: () => v.middle ?? v.young,
+    elder: () => v.elder ?? v.middle ?? v.young,
+    eighty: () => v.eighty ?? v.elder ?? v.middle ?? v.young,
+    ninety: () => v.ninety ?? v.eighty ?? v.elder ?? v.middle ?? v.young,
+    past: () => v.past ?? v.young,
+    century: () => v.century ?? v.elder ?? v.middle ?? v.young,
+    kin: () => v.kin ?? v.young,
+  }
+  return renderDialect(resolveText(pick[c.tier](), c), c.dialect)
+}
+
+/** 相手の名乗り（「30年後の はる」「100年後の はるの玄孫」） */
+export function callerLabel(years: number, nickname: string, relation?: string): string {
+  return relation ? `${yearsLabel(years)}の ${nickname}の${relation}` : `${yearsLabel(years)}の ${nickname}`
 }
 
 /** 自由入力の整形：改行・制御文字を除き、長さを制限する */

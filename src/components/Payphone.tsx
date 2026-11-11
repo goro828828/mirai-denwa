@@ -7,12 +7,14 @@ interface Props {
   activeKey?: number | null
   onHandset?: () => void
   handsetLabel?: string
+  /** 押しボタンを押せるようにする（自分で年を押してかける回だけ） */
+  onKey?: (n: number) => void
 }
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#']
 
 /** 公衆電話（CSSで描画。特定の実在機種を模したものではない） */
-export function Payphone({ lifted, lcd, slot, activeKey, onHandset, handsetLabel }: Props) {
+export function Payphone({ lifted, lcd, slot, activeKey, onHandset, handsetLabel, onKey }: Props) {
   return (
     <div className="payphone" data-lifted={lifted} data-slot={slot}>
       <div className="pp-hood" aria-hidden="true" />
@@ -41,13 +43,29 @@ export function Payphone({ lifted, lcd, slot, activeKey, onHandset, handsetLabel
             <div className="pp-slot" />
             <span className="pp-slot-label">カード</span>
           </div>
-          <div className="pp-keys" aria-hidden="true">
-            {KEYS.map((k) => (
-              <span key={k} className={`pp-key${activeKey !== null && String(activeKey) === k ? ' on' : ''}`}>
-                {k}
-              </span>
-            ))}
-          </div>
+          {onKey ? (
+            <div className="pp-keys pressable" role="group" aria-label="押しボタン">
+              {KEYS.map((k) => (
+                <button
+                  type="button"
+                  key={k}
+                  className={`pp-key${activeKey !== null && String(activeKey) === k ? ' on' : ''}`}
+                  disabled={!/\d/.test(k)}
+                  onClick={() => onKey(Number(k))}
+                >
+                  {k}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="pp-keys" aria-hidden="true">
+              {KEYS.map((k) => (
+                <span key={k} className={`pp-key${activeKey !== null && String(activeKey) === k ? ' on' : ''}`}>
+                  {k}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="pp-return" aria-hidden="true" />
         </div>
       </div>
