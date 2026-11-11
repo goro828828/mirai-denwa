@@ -183,7 +183,7 @@ export async function renderCardPng(r: CallRecord): Promise<Blob> {
 
   ctx.fillStyle = C.accent
   ctx.font = `500 30px ${FONT}`
-  ctx.fillText(`10年後の ${r.nickname} より`, left, fy + 52)
+  ctx.fillText(`${r.years ?? 10}年後の ${r.nickname} より`, left, fy + 52)
 
   // メッセージ（長さに応じて文字サイズを調整）
   const msgTop = fy + 120

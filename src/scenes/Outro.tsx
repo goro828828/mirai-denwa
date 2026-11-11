@@ -62,7 +62,7 @@ function CardActions({ record }: { record: CallRecord }) {
           カードを共有する
         </button>
       ) : (
-        <a className="btn ghost" href={xIntentUrl()} target="_blank" rel="noopener noreferrer">
+        <a className="btn ghost" href={xIntentUrl(record)} target="_blank" rel="noopener noreferrer">
           Xに投稿する
         </a>
       )}
@@ -105,7 +105,7 @@ export function ResultScene({ record, onHistory, onAgain }: { record: CallRecord
       <h2 className="scene-title">未来からのカード</h2>
       <div className="card-image">
         {url ? (
-          <img src={url} alt={`テレフォンカード。10年後の${record.nickname}より：${record.finalMessage}`} />
+          <img src={url} alt={`テレフォンカード。${record.years ?? 10}年後の${record.nickname}より：${record.finalMessage}`} />
         ) : error ? (
           <CardPrinted record={record} />
         ) : (
@@ -158,7 +158,7 @@ export function HistoryScene({
           {formatDateTime(open.createdAt)}
         </h2>
         <div className="card-image">
-          {url ? <img src={url} alt={`テレフォンカード。10年後の${open.nickname}より：${open.finalMessage}`} /> : <div className="card-skeleton" />}
+          {url ? <img src={url} alt={`テレフォンカード。${open.years ?? 10}年後の${open.nickname}より：${open.finalMessage}`} /> : <div className="card-skeleton" />}
         </div>
         <CardActions record={open} />
         <AnswerList record={open} />

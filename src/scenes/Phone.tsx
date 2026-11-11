@@ -13,10 +13,13 @@ const sleep = (ms: number) => new Promise((r) => window.setTimeout(r, ms))
 export function PhoneScene({
   profile,
   weather,
+  years,
   onConnected,
   onManualWeather,
 }: {
   profile: Profile
+  /** 何年後の自分にかけるか */
+  years: number
   /** undefined = 取得中、null = 取得できなかった */
   weather: WeatherInfo | null | undefined
   onConnected: () => void
@@ -59,9 +62,9 @@ export function PhoneScene({
     await sleep(700)
     if (!alive.current) return
     setStage('dialing')
-    // 10年後の今日へダイヤル
+    // ◯年後の今日へダイヤル
     const d = new Date()
-    const target = `${d.getFullYear() + 10}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+    const target = `${d.getFullYear() + years}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
     setLcd('')
     for (let i = 0; i < target.length; i++) {
       if (!alive.current) return

@@ -40,7 +40,7 @@ function Band() {
 
 export function CardFront() {
   return (
-    <div className="pc pc-front" role="img" aria-label="テレフォンカードの表面。「10年後のあなたへ、つながります。」と書かれている">
+    <div className="pc pc-front" role="img" aria-label="テレフォンカードの表面。「いつかのあなたへ、つながります。」と書かれている">
       <Band />
       <div className="pc-body">
         <svg className="pc-illust" viewBox="0 0 120 140" aria-hidden="true">
@@ -55,7 +55,7 @@ export function CardFront() {
         </svg>
         <div className="pc-front-text">
           <p className="pc-small">TELEPHONE CARD</p>
-          <p className="pc-front-title">10年後のあなたへ、つながります。</p>
+          <p className="pc-front-title">いつかのあなたへ、つながります。</p>
           <p className="pc-small">このカードは、どこかの公衆電話で使えます。</p>
         </div>
       </div>
@@ -134,7 +134,7 @@ export function CardPrinted({ record, printedChars }: PrintedProps) {
           <dt>てんき</dt>
           <dd>{weatherText(record.weather)}</dd>
         </dl>
-        <p className="pc-printed-from">10年後の {record.nickname} より</p>
+        <p className="pc-printed-from">{record.years ?? 10}年後の {record.nickname} より</p>
         <p className="pc-printed-msg" aria-label={record.finalMessage}>
           <span aria-hidden="true">{msg}</span>
         </p>

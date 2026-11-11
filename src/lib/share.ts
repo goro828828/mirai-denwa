@@ -1,7 +1,7 @@
 import type { CallRecord } from '../types'
 import { cardFileName, renderCardPng, SITE_URL } from './cardImage'
 
-export const SHARE_TEXT = '10年後の自分から、着信がありました。\n#未来の自分から着信です'
+export const shareText = (r: CallRecord) => `${r.years ?? 10}年後の自分から、着信がありました。\n#未来の自分から着信です`
 
 export function downloadBlob(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob)
@@ -33,7 +33,7 @@ export async function shareCard(r: CallRecord): Promise<'shared' | 'cancelled' |
   if (!navigator.share) return 'unsupported'
   const blob = await renderCardPng(r)
   const file = new File([blob], cardFileName(r), { type: 'image/png' })
-  const data: ShareData = { text: SHARE_TEXT, ...(SITE_URL ? { url: SITE_URL } : {}) }
+  const data: ShareData = { text: shareText(r), ...(SITE_URL ? { url: SITE_URL } : {}) }
   try {
     if (navigator.canShare?.({ files: [file] })) await navigator.share({ ...data, files: [file] })
     else await navigator.share(data)
@@ -44,8 +44,8 @@ export async function shareCard(r: CallRecord): Promise<'shared' | 'cancelled' |
   }
 }
 
-export function xIntentUrl(): string {
-  const p = new URLSearchParams({ text: SHARE_TEXT })
+export function xIntentUrl(r: CallRecord): string {
+  const p = new URLSearchParams({ text: shareText(r) })
   if (SITE_URL) p.set('url', SITE_URL)
   return `https://x.com/intent/post?${p.toString()}`
 }

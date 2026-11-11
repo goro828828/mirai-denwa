@@ -9,6 +9,7 @@ import { EjectScene, PhoneScene } from './scenes/Phone'
 import { CallScene, type CallResult } from './scenes/Call'
 import { HistoryScene, ResultScene } from './scenes/Outro'
 import { SettingsDialog } from './components/Settings'
+import { pickYears } from './story/engine'
 
 type Scene = 'title' | 'pickup' | 'fill' | 'phone' | 'call' | 'eject' | 'result' | 'history'
 
@@ -30,6 +31,8 @@ export default function App() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [weather, setWeather] = useState<WeatherInfo | null | undefined>(undefined)
   const [record, setRecord] = useState<CallRecord | null>(null)
+  /** 今回つながる「何年後の自分」。カードを拾うたびにランダムで決める */
+  const [years, setYears] = useState(10)
   const [history, setHistory] = useState<CallRecord[]>(() => loadHistory())
   const [settings, setSettings] = useState<Settings>(() => loadSettings())
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -74,6 +77,7 @@ export default function App() {
     sound.unlock()
     sound.click()
     setRecord(null)
+    setYears(pickYears())
     setScene('pickup')
   }
 
@@ -99,13 +103,15 @@ export default function App() {
         answers: r.answers,
         finalMessage: r.finalMessage,
         usedUnits: r.usedUnits,
+        years,
+        topic: r.topic,
       }
       setSaveFailed(!addHistory(rec))
       setHistory(loadHistory())
       setRecord(rec)
       setScene('eject')
     },
-    [profile, weather],
+    [profile, weather, years],
   )
 
   const chooseSky = (kind: WeatherKind) => {
@@ -163,8 +169,8 @@ export default function App() {
         {scene === 'title' && <TitleScene onStart={start} onHistory={() => openHistory('title')} historyCount={history.length} />}
         {scene === 'pickup' && <PickupScene reduced={reduced} onDone={() => setScene('fill')} />}
         {scene === 'fill' && <FillScene initial={loadDraft<Profile>()} onPrefChange={requestWeather} onDone={onFilled} />}
-        {scene === 'phone' && profile && <PhoneScene profile={profile} weather={weather} onConnected={() => setScene('call')} onManualWeather={chooseSky} />}
-        {scene === 'call' && profile && <CallScene profile={profile} weather={weather ?? null} reduced={reduced} onEnd={onCallEnd} />}
+        {scene === 'phone' && profile && <PhoneScene profile={profile} weather={weather} years={years} onConnected={() => setScene('call')} onManualWeather={chooseSky} />}
+        {scene === 'call' && profile && <CallScene profile={profile} weather={weather ?? null} years={years} reduced={reduced} onEnd={onCallEnd} />}
         {scene === 'eject' && record && <EjectScene record={record} reduced={reduced} onDone={() => setScene('result')} />}
         {scene === 'result' && record && (
           <>

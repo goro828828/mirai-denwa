@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { NODES, RECALL_CHANCE, recallFor, type Choice, type StoryNode, type Variant } from '../story/script'
-import { cleanInput, resolveText, speak, type CallContext } from '../story/engine'
+import { NODES, RECALL_CHANCE, recallFor, type Choice, type InputDef, type StoryNode, type Variant } from '../story/script'
+import { cleanInput, resolveText, speak, tierOf, type CallContext } from '../story/engine'
+import { pickTopic } from '../story/topics'
 import type { AnswerLog, Profile, WeatherInfo } from '../types'
 import { dialectOf } from '../data/prefectures'
 import { sound } from '../lib/sound'
@@ -17,24 +18,33 @@ interface Entry {
 
 type Pending =
   | { kind: 'choices'; node: StoryNode; choices: Choice[] }
-  | { kind: 'input'; node: StoryNode }
+  | { kind: 'input'; node: StoryNode; input: InputDef }
   | null
+
+function questionOf(node: StoryNode, c: CallContext): string | undefined {
+  return typeof node.question === 'function' ? node.question(c) : node.question
+}
 
 export interface CallResult {
   answers: AnswerLog[]
   finalMessage: string
   usedUnits: number
+  /** その回に出た話題（「最近の◯◯」枠） */
+  topic: string
 }
 
 export function CallScene({
   profile,
   weather,
+  years,
   reduced,
   onEnd,
 }: {
   profile: Profile
   weather: WeatherInfo | null
   reduced: boolean
+  /** 何年後の自分につながったか */
+  years: number
   onEnd: (r: CallResult) => void
 }) {
   const [log, setLog] = useState<Entry[]>([])
@@ -51,6 +61,9 @@ export function CallScene({
     lifestage: profile.lifestage,
     weather,
     hour: new Date().getHours(),
+    years,
+    tier: tierOf(years),
+    topic: pickTopic(),
     answers: {},
   })
   const answerLog = useRef<AnswerLog[]>([])
@@ -120,7 +133,7 @@ export function CallScene({
     setEnded(true)
     await new Promise((r) => window.setTimeout(r, 2200))
     if (!alive.current) return
-    onEnd({ answers: answerLog.current, finalMessage: finalText.current, usedUnits: TOTAL_UNITS - unitsRef.current })
+    onEnd({ answers: answerLog.current, finalMessage: finalText.current, usedUnits: TOTAL_UNITS - unitsRef.current, topic: ctx.current.topic })
   }, [onEnd])
 
   const runNode = async (id: string | undefined) => {
@@ -144,7 +157,8 @@ export function CallScene({
     if (node.choices) setPending({ kind: 'choices', node, choices: node.choices(ctx.current) })
     else if (node.input) {
       setInputValue('')
-      setPending({ kind: 'input', node })
+      const input = typeof node.input === 'function' ? node.input(ctx.current) : node.input
+      setPending({ kind: 'input', node, input })
     } else await runNode(node.next)
   }
 
@@ -156,7 +170,8 @@ export function CallScene({
     if (node.effect === 'listen') sound.duck(true)
     push({ who: 'me', text: label })
     if (node.answerKey) ctx.current.answers[node.answerKey] = c.value
-    if (node.question) answerLog.current.push({ key: node.answerKey ?? node.id, question: node.question, answer: label })
+    const q = questionOf(node, ctx.current)
+    if (q) answerLog.current.push({ key: node.answerKey ?? node.id, question: q, answer: label })
     spend(4)
     await wait(400)
     if (c.reply) await say(c.reply)
@@ -164,18 +179,17 @@ export function CallScene({
     await runNode(c.next ?? node.next)
   }
 
-  const submitInput = async (node: StoryNode, skip: boolean) => {
-    if (!node.input) return
+  const submitInput = async (node: StoryNode, input: InputDef, skip: boolean) => {
     setPending(null)
     sound.click()
-    const value = skip ? '' : cleanInput(inputValue, node.input.maxLength)
-    ctx.current.answers[node.input.key] = value
+    const value = skip ? '' : cleanInput(inputValue, input.maxLength)
+    ctx.current.answers[input.key] = value
     push({ who: 'me', text: value || '……ひみつ。' })
-    answerLog.current.push({ key: node.input.key, question: node.question ?? node.input.prompt, answer: value || '（書かなかった）' })
+    answerLog.current.push({ key: input.key, question: questionOf(node, ctx.current) ?? input.prompt, answer: value || '（書かなかった）' })
     spend(4)
     await wait(400)
-    if (node.inputReply) await say(node.inputReply(value))
-    if (value) await maybeRecall(node.input.key, 'input')
+    if (node.inputReply) await say(node.inputReply(value, ctx.current))
+    if (value) await maybeRecall(input.key, 'input')
     await runNode(node.next)
   }
 
@@ -217,7 +231,7 @@ export function CallScene({
             <span className={`dot${ended ? ' off' : ''}`} aria-hidden="true" />
             {ended ? '通話終了' : '通話中'}　<span className="mono">{formatDuration(elapsed)}</span>
           </p>
-          <p className="call-name">10年後の {profile.nickname}</p>
+          <p className="call-name">{years}年後の {profile.nickname}</p>
         </div>
         <div className="units" aria-label={`カードの残り ${units} 度`}>
           <span className="units-label">残り</span>
@@ -242,7 +256,7 @@ export function CallScene({
                 ♪
               </span>
             )}
-            {e.final && <span className="final-label">10年後の {profile.nickname} から、最後に</span>}
+            {e.final && <span className="final-label">{years}年後の {profile.nickname} から、最後に</span>}
             <p>{e.text}</p>
           </div>
         ))}
@@ -272,16 +286,16 @@ export function CallScene({
             ))}
           </div>
         )}
-        {pending?.kind === 'input' && pending.node.input && (
+        {pending?.kind === 'input' &&  (
           <form
             className="free-input"
             onSubmit={(e) => {
               e.preventDefault()
-              void submitInput(pending.node, false)
+              void submitInput(pending.node, pending.input, false)
             }}
           >
             <label htmlFor="free" className="free-label">
-              {pending.node.input.prompt}
+              {pending.input.prompt}
             </label>
             <div className="free-row">
               <input
@@ -289,8 +303,8 @@ export function CallScene({
                 className="text-input"
                 type="text"
                 autoFocus
-                maxLength={pending.node.input.maxLength}
-                placeholder={pending.node.input.placeholder}
+                maxLength={pending.input.maxLength}
+                placeholder={pending.input.placeholder}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
               />
@@ -298,7 +312,7 @@ export function CallScene({
                 伝える
               </button>
             </div>
-            <button type="button" className="btn ghost small" onClick={() => void submitInput(pending.node, true)}>
+            <button type="button" className="btn ghost small" onClick={() => void submitInput(pending.node, pending.input, true)}>
               書かずに答える
             </button>
           </form>

@@ -43,4 +43,8 @@ export interface CallRecord {
   finalMessage: string
   /** 使った度数（カードのパンチ穴に反映） */
   usedUnits: number
+  /** 何年後の自分と話したか（古い履歴には無い → 10年後として扱う） */
+  years?: number
+  /** その回に出た話題（「最近の◯◯」枠） */
+  topic?: string
 }
