@@ -1,23 +1,26 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CallRecord } from '../types'
 import { renderCardPng } from '../lib/cardImage'
-import { canShareFiles, saveCard, shareCard, xIntentUrl } from '../lib/share'
+import { canShareFiles, saveCard, saveMode, shareCard, xIntentUrl } from '../lib/share'
 import { formatDateTime, weatherText } from '../lib/format'
 import { CardPrinted, GENDER_LABEL, LIFESTAGE_LABEL } from '../components/PhoneCard'
 import { yearsLabel } from '../story/engine'
 
 function useCardUrl(record: CallRecord | null) {
   const [url, setUrl] = useState<string | null>(null)
+  const [blob, setBlob] = useState<Blob | null>(null)
   const [error, setError] = useState(false)
   useEffect(() => {
     if (!record) return
     let revoked = false
     let made: string | null = null
     setUrl(null)
+    setBlob(null)
     setError(false)
     renderCardPng(record)
       .then((b) => {
         if (revoked) return
+        setBlob(b)
         made = URL.createObjectURL(b)
         setUrl(made)
       })
@@ -27,13 +30,21 @@ function useCardUrl(record: CallRecord | null) {
       if (made) URL.revokeObjectURL(made)
     }
   }, [record])
-  return { url, error }
+  return { url, blob, error }
 }
 
-function CardActions({ record }: { record: CallRecord }) {
+const SAVE_LABEL = { photos: '写真に保存', gallery: '写真に保存', download: 'カードを画像で保存' } as const
+const SAVED_MSG = {
+  photos: '開いたメニューで「画像を保存」を選んでいれば、写真アプリに入っています。',
+  gallery: '保存しました。写真（ギャラリー）アプリの「Download」フォルダに入っています。',
+  download: '画像を保存しました。見つからない場合は、上のカード画像を長押しして保存できます。',
+} as const
+
+function CardActions({ record, blob }: { record: CallRecord; blob: Blob | null }) {
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const shareFiles = canShareFiles()
+  const mode = saveMode()
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true)
@@ -50,11 +61,12 @@ function CardActions({ record }: { record: CallRecord }) {
   return (
     <div className="stack">
       <button type="button" className="btn primary" disabled={busy} onClick={() => run(async () => {
-        await saveCard(record)
-        setMsg('画像を保存しました。見つからない場合は、上のカード画像を長押しして保存できます。')
+        const r = await saveCard(record, blob)
+        if (r !== 'cancelled') setMsg(SAVED_MSG[r])
       })}>
-        カードを画像で保存
+        {SAVE_LABEL[mode]}
       </button>
+      {mode === 'photos' && <p className="note">開いたメニューで「画像を保存」を選ぶと、写真アプリに保存されます。</p>}
       {shareFiles ? (
         <button type="button" className="btn ghost" disabled={busy} onClick={() => run(async () => {
           const r = await shareCard(record)
@@ -100,7 +112,7 @@ function AnswerList({ record }: { record: CallRecord }) {
 }
 
 export function ResultScene({ record, onHistory, onAgain }: { record: CallRecord; onHistory: () => void; onAgain: () => void }) {
-  const { url, error } = useCardUrl(record)
+  const { url, blob, error } = useCardUrl(record)
   return (
     <section className="scene result-scene">
       <h2 className="scene-title">未来からのカード</h2>
@@ -113,7 +125,7 @@ export function ResultScene({ record, onHistory, onAgain }: { record: CallRecord
           <div className="card-skeleton" aria-label="カードを用意しています" />
         )}
       </div>
-      <CardActions record={record} />
+      <CardActions record={record} blob={blob} />
       <AnswerList record={record} />
       <div className="stack">
         <button type="button" className="btn ghost" onClick={onHistory}>
@@ -142,7 +154,7 @@ export function HistoryScene({
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [confirmAll, setConfirmAll] = useState(false)
   const open = records.find((r) => r.id === openId) ?? null
-  const { url } = useCardUrl(open)
+  const { url, blob } = useCardUrl(open)
   const headingRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
@@ -161,7 +173,7 @@ export function HistoryScene({
         <div className="card-image">
           {url ? <img src={url} alt={`テレフォンカード。${yearsLabel(open.years ?? 10)}の${open.nickname}より：${open.finalMessage}`} /> : <div className="card-skeleton" />}
         </div>
-        <CardActions record={open} />
+        <CardActions record={open} blob={blob} />
         <AnswerList record={open} />
       </section>
     )
