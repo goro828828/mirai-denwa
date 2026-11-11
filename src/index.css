@@ -373,6 +373,7 @@ p {
   text-overflow: ellipsis;
 }
 .pc-printed-body {
+  position: relative;
   padding-top: 4cqw;
   display: flex;
   flex-direction: column;
@@ -824,8 +825,14 @@ p {
 
 /* ---------- 通話 ---------- */
 .call-scene {
-  height: 100dvh;
+  /* 見えている範囲（キーボードを除く）に固定する。値は Call.tsx が visualViewport から入れる */
+  position: fixed;
+  top: var(--vvtop, 0px);
+  left: 0;
+  right: 0;
+  height: var(--vvh, 100dvh);
   min-height: 0;
+  overflow: hidden;
   padding-bottom: calc(12px + env(safe-area-inset-bottom));
   gap: 12px;
 }
@@ -1299,5 +1306,60 @@ p {
 .setting-help {
   display: block;
   font-size: 12px;
+  color: var(--sub);
+}
+
+.pc-illust-print {
+  position: absolute;
+  top: 3cqw;
+  right: 4cqw;
+  width: 15cqw;
+  height: 15cqw;
+  pointer-events: none;
+}
+.pc-illust-print svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 通話中は、後ろのページがスクロール・拡大でずれないようにする */
+html.call-lock,
+html.call-lock body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  height: 100%;
+}
+.free-row .text-input,
+.text-input,
+.select {
+  font-size: 16px;
+}
+
+/* 自由入力：キーボードが出ても会話が見えるよう、LINE の入力欄のように小さくまとめる */
+.free-input {
+  padding: 10px 12px;
+  gap: 6px;
+}
+.free-input .free-label {
+  font-size: 13px;
+  line-height: 1.4;
+}
+.free-input .text-input {
+  min-height: 44px;
+  padding: 8px 12px;
+}
+.free-input .btn.small {
+  min-height: 44px;
+}
+.free-input > .btn.ghost.small {
+  align-self: flex-end;
+  min-height: 36px;
+  padding: 4px 8px;
+  border: 0;
+  background: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 500;
   color: var(--sub);
 }

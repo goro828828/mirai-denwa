@@ -10,7 +10,8 @@ import { EjectScene, PhoneScene } from './scenes/Phone'
 import { CallScene, type CallResult } from './scenes/Call'
 import { HistoryScene, ResultScene } from './scenes/Outro'
 import { SettingsDialog } from './components/Settings'
-import { pickYears } from './story/engine'
+import { pickYearsFor } from './story/engine'
+import { pickIllustration } from './lib/illustrations'
 
 type Scene = 'title' | 'pickup' | 'fill' | 'phone' | 'call' | 'eject' | 'result' | 'history'
 
@@ -81,7 +82,8 @@ export default function App() {
     sound.unlock()
     sound.click()
     setRecord(null)
-    setYears(pickYears())
+    // 履歴が10件たまるごとに、次の1回は10年前か100年後の自分（自動で抽選）
+    setYears(pickYearsFor(history.length))
     setScene('pickup')
     // 現在地の天気（任意）。許可されなければ、入力した都道府県の天気を使う
     hereWeather.current = null
@@ -121,6 +123,7 @@ export default function App() {
         years,
         topic: r.topic,
       }
+      rec.illustration = pickIllustration(rec)
       setSaveFailed(!addHistory(rec))
       setHistory(loadHistory())
       setRecord(rec)

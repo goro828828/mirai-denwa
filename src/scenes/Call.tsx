@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NODES, RECALL_CHANCE, recallFor, type Choice, type InputDef, type StoryNode, type Variant } from '../story/script'
-import { cleanInput, resolveText, speak, tierOf, type CallContext } from '../story/engine'
+import { cleanInput, resolveText, speak, tierOf, yearsLabel, type CallContext } from '../story/engine'
 import { pickTopic } from '../story/topics'
 import type { AnswerLog, Profile, WeatherInfo } from '../types'
 import { dialectFor } from '../data/dialects'
@@ -81,6 +81,9 @@ export function CallScene({
   const recallCount = useRef(0)
   const idRef = useRef(0)
   const skipRef = useRef<(() => void) | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const sceneRef = useRef<HTMLElement>(null)
+  const logRef = useRef<HTMLDivElement>(null)
   const fastRef = useRef(false)
   const holdTimer = useRef<number | null>(null)
   const lowShown = useRef(false)
@@ -220,6 +223,8 @@ export function CallScene({
   }
 
   const submitInput = async (node: StoryNode, input: InputDef, skip: boolean) => {
+    // 回答したらキーボードを閉じて、画面を元の表示に戻す
+    inputRef.current?.blur()
     setPending(null)
     sound.click()
     const value = skip ? '' : cleanInput(inputValue, input.maxLength)
@@ -247,6 +252,56 @@ export function CallScene({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  /**
+   * 通話画面を「キーボードを除いた、見えている範囲」に固定する（LINE の入力画面と同じ形）。
+   * キーボードが出ても、画面は入力欄に引っぱられず、入力欄は一番下に残る。
+   */
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.add('call-lock')
+    const vv = window.visualViewport
+    const update = () => {
+      const el = sceneRef.current
+      if (!el) return
+      const h = vv ? vv.height : window.innerHeight
+      const top = vv ? vv.offsetTop : 0
+      el.style.setProperty('--vvh', `${h}px`)
+      el.style.setProperty('--vvtop', `${top}px`)
+      // ページ自体はスクロールさせない。会話欄は、高さが変わったあとに最新の発言まで送る
+      if (window.scrollY !== 0) window.scrollTo(0, 0)
+      requestAnimationFrame(() => {
+        const log = logRef.current
+        if (log) log.scrollTop = log.scrollHeight
+      })
+    }
+    update()
+    vv?.addEventListener('resize', update)
+    vv?.addEventListener('scroll', update)
+    window.addEventListener('resize', update)
+    return () => {
+      root.classList.remove('call-lock')
+      vv?.removeEventListener('resize', update)
+      vv?.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+
+  // 会話欄の大きさが変わったら（キーボードの出入り・入力欄の表示など）、最新の発言まで送る
+  useEffect(() => {
+    const log = logRef.current
+    if (!log || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => {
+      log.scrollTop = log.scrollHeight
+    })
+    ro.observe(log)
+    return () => ro.disconnect()
+  }, [])
+
+  // 入力欄が出たら、画面を動かさずにフォーカスする
+  useEffect(() => {
+    if (pending?.kind === 'input') inputRef.current?.focus({ preventScroll: true })
+  }, [pending])
+
   useEffect(() => {
     if (ended) return
     const t = window.setInterval(() => setElapsed((s) => s + 1), 1000)
@@ -264,14 +319,14 @@ export function CallScene({
   const unitPct = (units / TOTAL_UNITS) * 100
 
   return (
-    <section className="scene call-scene">
+    <section className="scene call-scene" ref={sceneRef}>
       <header className="call-head">
         <div>
           <p className="call-status">
             <span className={`dot${ended ? ' off' : ''}`} aria-hidden="true" />
             {ended ? '通話終了' : '通話中'}　<span className="mono">{formatDuration(elapsed)}</span>
           </p>
-          <p className="call-name">{years}年後の {profile.nickname}</p>
+          <p className="call-name">{yearsLabel(years)}の {profile.nickname}</p>
         </div>
         <div className="units" aria-label={`カードの残り ${units} 度`}>
           <span className="units-label">残り</span>
@@ -284,6 +339,7 @@ export function CallScene({
 
       <div
         className="call-log"
+        ref={logRef}
         role="log"
         aria-live="polite"
         aria-label="通話の字幕"
@@ -311,7 +367,7 @@ export function CallScene({
                 ♪
               </span>
             )}
-            {e.final && <span className="final-label">{years}年後の {profile.nickname} から、最後に</span>}
+            {e.final && <span className="final-label">{yearsLabel(years)}の {profile.nickname} から、最後に</span>}
             <p>{e.text}</p>
           </div>
         ))}
@@ -355,9 +411,11 @@ export function CallScene({
             <div className="free-row">
               <input
                 id="free"
+                ref={inputRef}
                 className="text-input"
                 type="text"
-                autoFocus
+                enterKeyHint="send"
+                autoComplete="off"
                 maxLength={pending.input.maxLength}
                 placeholder={pending.input.placeholder}
                 value={inputValue}

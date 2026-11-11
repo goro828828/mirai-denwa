@@ -92,7 +92,7 @@ export function PhoneScene({
   let guide = '受話器をタップして、あげてください。'
   if (stage === 'lifted') guide = 'カードを上にスワイプするか、タップして差し込んでください。'
   if (stage === 'inserting') guide = 'カードが吸いこまれていく。'
-  if (stage === 'dialing') guide = '番号が、ひとりでに押されていく。'
+  if (stage === 'dialing') guide = years < 0 || years >= 100 ? '……いつもと、ちがう番号が押されていく。' : '番号が、ひとりでに押されていく。'
   if (stage === 'ringing') guide = '……呼び出し音が鳴っている。'
 
   return (

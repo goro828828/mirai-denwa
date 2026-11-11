@@ -1,7 +1,8 @@
 import type { CallRecord } from '../types'
 import { cardFileName, renderCardPng, SITE_URL } from './cardImage'
+import { yearsLabel } from '../story/engine'
 
-export const shareText = (r: CallRecord) => `${r.years ?? 10}年後の自分から、着信がありました。\n#未来の自分から着信です`
+export const shareText = (r: CallRecord) => `${yearsLabel(r.years ?? 10)}の自分から、着信がありました。\n#未来の自分から着信です`
 
 export function downloadBlob(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob)

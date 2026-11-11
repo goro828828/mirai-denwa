@@ -46,4 +46,6 @@ export interface CallRecord {
   years?: number
   /** その回に出た話題（「最近の◯◯」枠） */
   topic?: string
+  /** カードの挿絵（lib/illustrations.ts のキー） */
+  illustration?: string
 }

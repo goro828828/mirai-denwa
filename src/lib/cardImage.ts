@@ -5,6 +5,8 @@
  */
 import type { CallRecord } from '../types'
 import { formatDateTime, weatherText } from './format'
+import { yearsLabel } from '../story/engine'
+import { illustrationOf, loadIllustration } from './illustrations'
 
 export const SITE_URL: string = import.meta.env.VITE_SITE_URL ?? ''
 const FONT = '"Zen Maru Gothic", sans-serif'
@@ -77,7 +79,7 @@ export async function renderCardPng(r: CallRecord): Promise<Blob> {
   const cy = (H - ch) / 2
 
   const allText =
-    '未来の自分から、着信です。テレフォンカード通話記録なまえばしょてんき年後のよりいつか懐かしくなる今日を0123456789.:（）' +
+    '未来の自分から、着信です。テレフォンカード通話記録なまえばしょてんき年前後のよりいつか懐かしくなる今日を0123456789.:（）' +
     r.nickname +
     r.prefName +
     r.finalMessage +
@@ -183,7 +185,7 @@ export async function renderCardPng(r: CallRecord): Promise<Blob> {
 
   ctx.fillStyle = C.accent
   ctx.font = `500 30px ${FONT}`
-  ctx.fillText(`${r.years ?? 10}年後の ${r.nickname} より`, left, fy + 52)
+  ctx.fillText(`${yearsLabel(r.years ?? 10)}の ${r.nickname} より`, left, fy + 52)
 
   // メッセージ（長さに応じて文字サイズを調整）
   const msgTop = fy + 120
@@ -197,6 +199,13 @@ export async function renderCardPng(r: CallRecord): Promise<Blob> {
   }
   ctx.fillStyle = C.ink
   lines.forEach((l, i) => ctx.fillText(l, left, msgTop + i * size * 1.7))
+
+  // 挿絵（右上）
+  const illust = await loadIllustration(illustrationOf(r))
+  if (illust) {
+    const size = 250
+    ctx.drawImage(illust, right - size + 10, cy + 56, size, size)
+  }
 
   // フッター
   ctx.fillStyle = C.sub

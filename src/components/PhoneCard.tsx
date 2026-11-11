@@ -2,6 +2,8 @@ import type { CallRecord, Gender, LifeStage } from '../types'
 import { findPref } from '../data/prefectures'
 import { formatDateTime, weatherText } from '../lib/format'
 import { TOTAL_UNITS } from '../lib/cardImage'
+import { yearsLabel } from '../story/engine'
+import { ILLUSTRATIONS, illustrationOf } from '../lib/illustrations'
 
 export const GENDER_LABEL: Record<Gender, string> = { male: '男性', female: '女性', other: 'その他', none: '回答しない' }
 export const LIFESTAGE_LABEL: Record<LifeStage, string> = { student: '学生', worker: '社会人', other: 'その他', none: '回答しない' }
@@ -124,6 +126,13 @@ export function CardPrinted({ record, printedChars }: PrintedProps) {
     <div className="pc pc-printed">
       <Band />
       <div className="pc-body pc-printed-body">
+        <span
+          className="pc-illust-print"
+          role="img"
+          aria-label={`挿絵：${ILLUSTRATIONS[illustrationOf(record)].label}`}
+          // 中身はアプリ内で定義した固定のSVGだけ（入力内容は含まない）
+          dangerouslySetInnerHTML={{ __html: ILLUSTRATIONS[illustrationOf(record)].svg }}
+        />
         <p className="pc-printed-title">未来の自分から、着信です。</p>
         <p className="pc-printed-date">{formatDateTime(record.createdAt)} 通話</p>
         <dl className="pc-printed-fields">
@@ -134,7 +143,7 @@ export function CardPrinted({ record, printedChars }: PrintedProps) {
           <dt>てんき</dt>
           <dd>{weatherText(record.weather)}</dd>
         </dl>
-        <p className="pc-printed-from">{record.years ?? 10}年後の {record.nickname} より</p>
+        <p className="pc-printed-from">{yearsLabel(record.years ?? 10)}の {record.nickname} より</p>
         <p className="pc-printed-msg" aria-label={record.finalMessage}>
           <span aria-hidden="true">{msg}</span>
         </p>
