@@ -8,8 +8,11 @@
  *
  * 3枚の層でできている
  * - 空（画面いっぱい）：空の色、太陽・月・星、雲、稲光
- * - 地面（画面の下 約6割）：山、田んぼ、農道、電柱、電話ボックス、街灯。座標は横 1000 × 縦 380〜900。
- *   スマホでは横 240〜760 あたりが見える。主役（電話と街灯）は真ん中の x=520〜630 に置く。
+ * - 地面（画面の下 約6割）：真横から見た平面的な構図。座標は横 1000 × 縦 380〜900。
+ *     上から 山 → 奥の田んぼ → 草の路肩 → 横一本の道 → 手前の田んぼ。
+ *     電話ボックス・街灯・電柱は、道の奥側の路肩に立っている。
+ *   スマホでは横 240〜760 あたりが見える。主役（電話と街灯）は真ん中の x=520〜640 に置く。
+ * - 動き：街灯に寄ってくる虫（明かりがついているとき）、昼の空を右から左へ横切るカラス
  * - 雨・雪（画面いっぱい、いちばん手前）
  * 公衆電話は特定の実在の機種を模したものではない。
  */
@@ -62,30 +65,79 @@ const DROPS = Array.from({ length: 70 }, (_, i) => [((i * 137) % 1000) + 0.5, (i
 /** 切れ目なく降らせるため、1画面ぶん上にも同じ粒を置き、900 下へ動かしてループする */
 const LOOP = [...DROPS, ...DROPS.map(([x, y, r]) => [x, y - 900, r] as const)]
 
-const GROUND: Record<Season | 'snow', { field: string; dark: string; ridge: string; far: string; near: string }> = {
-  spring: { field: '#a9c9cf', dark: '#8fb3ba', ridge: '#9cbf6a', far: '#a7bf8f', near: '#7fa56a' },
-  summer: { field: '#5f9e48', dark: '#4c8a3b', ridge: '#87b55c', far: '#6f9f72', near: '#4f8352' },
-  autumn: { field: '#d8b049', dark: '#c49a37', ridge: '#a8995c', far: '#b9926a', near: '#9c6a45' },
-  winter: { field: '#a58c6a', dark: '#8f7757', ridge: '#b9a682', far: '#9a9580', near: '#7c7766' },
-  snow: { field: '#f3f6f8', dark: '#dde5ea', ridge: '#e7edf1', far: '#e3e9ee', near: '#ccd6de' },
+const GROUND: Record<Season | 'snow', { water: string; rice: string; riceDark: string; verge: string; far: string; near: string; road: string }> = {
+  spring: { water: '#b4d2d8', rice: '#7fb05a', riceDark: '#6a9c49', verge: '#93b968', far: '#a7bf8f', near: '#7fa56a', road: '#b9a98c' },
+  summer: { water: '#4f8f3c', rice: '#63a34a', riceDark: '#4b8a38', verge: '#7dae55', far: '#6f9f72', near: '#4f8352', road: '#b5a385' },
+  autumn: { water: '#c9a043', rice: '#e0b84f', riceDark: '#c99a33', verge: '#a5a25e', far: '#b9926a', near: '#9c6a45', road: '#b8a283' },
+  winter: { water: '#a58c6a', rice: '#8f7757', riceDark: '#7c6649', verge: '#a59a72', far: '#9a9580', near: '#7c7766', road: '#a8997f' },
+  snow: { water: '#f3f6f8', rice: '#e6ecf0', riceDark: '#d6dfe6', verge: '#eef2f5', far: '#e3e9ee', near: '#ccd6de', road: '#dfe5ea' },
 }
-
-/** 田んぼの畦（あぜ）：手前ほど間隔が広い */
-const ROWS = [556, 566, 580, 600, 628, 666, 716, 782, 900]
-/** 消失点から広がる畦 */
-const VP = { x: 500, y: 500 }
-const FANS = [-1100, -400, 120, 360, 720, 1050, 1700]
-const fanX = (bx: number, y: number) => VP.x + ((bx - VP.x) * (y - VP.y)) / (900 - VP.y)
 
 /** 遠くの山・近くの山の形 */
 const FAR = 'M0 540 L0 460 Q90 410 180 440 Q260 392 340 430 Q420 360 520 422 Q600 382 680 430 Q770 392 860 435 Q930 410 1000 450 L1000 540 Z'
 const NEAR = 'M0 570 L0 494 Q120 456 230 494 Q330 466 420 512 Q520 486 610 516 Q720 478 830 510 Q920 492 1000 506 L1000 570 Z'
 
-/** 電話ボックスと街灯の位置 */
-const BOOTH = { x: 526, y: 534, w: 68, h: 122 }
-const BASE = BOOTH.y + BOOTH.h
-const POLE = { x: 624, top: 470 }
-const LAMP = { x: 590, y: 498 }
+/** 横一本の帯（上から順に） */
+const Y = {
+  paddyTop: 548, // 奥の田んぼ
+  aze: 590, // 田んぼのあいだの畦（平らな帯）
+  verge: 626, // 道の奥側の路肩（電話や電柱が立つ）
+  road: 648, // 道
+  roadEnd: 684,
+  front: 692, // 手前の田んぼ
+}
+
+/** 電話ボックス・街灯・電柱（すべて路肩に立つ） */
+const BASE = 642
+const BOOTH = { x: 524, w: 68, h: 120 }
+const POLE = { x: 626, top: 470 }
+const LAMP = { x: 592, y: 498 }
+const POLES = [330, 860]
+
+/** 稲の頭（丸いふくらみ）を横に並べた、平らな形 */
+function bumps(y: number, depth: number, step: number, h: number, offset = 0): string {
+  let d = `M-20 ${y + depth} L-20 ${y}`
+  for (let x = -20 + offset; x < 1020; x += step) d += ` Q${x + step / 2} ${y - h} ${x + step} ${y}`
+  return d + ` L1020 ${y + depth} Z`
+}
+
+/** 春の苗（小さな三角の株を並べる） */
+function seedlings(y: number, step: number, size: number, offset = 0): string {
+  let d = ''
+  for (let x = offset; x < 1000; x += step) d += `M${x - size * 0.6} ${y}L${x} ${y - size * 1.4}L${x + size * 0.6} ${y}Z`
+  return d
+}
+
+/** 冬の切り株（小さな四角を並べる） */
+function stubble(y: number, step: number, w: number, h: number, offset = 0): string {
+  let d = ''
+  for (let x = offset; x < 1000; x += step) d += `M${x} ${y}h${w}v-${h}h-${w}Z`
+  return d
+}
+
+/** 虫：街灯のまわりを回る（それぞれの軌道） */
+const MOTHS = [
+  { r: 1.8, cls: 'm1' },
+  { r: 1.5, cls: 'm2' },
+  { r: 1.3, cls: 'm3' },
+  { r: 1.6, cls: 'm4' },
+  { r: 1.2, cls: 'm5' },
+]
+
+/** カラス（左向き。翼は別に動かす） */
+function Crow({ cls, y, scale }: { cls: string; y: number; scale: number }) {
+  return (
+    <g className={`tl-crow ${cls}`} style={{ ['--y' as string]: `${y}px` }}>
+      <g transform={`scale(${scale})`} fill="#26252b">
+        <ellipse cx="0" cy="0" rx="13" ry="5" />
+        <circle cx="-12" cy="-2" r="4.5" />
+        <path d="M-16 -2 l-6 1.5 l6 1.5 z" />
+        <path d="M11 -1 l10 -4 l-2 5 l2 4 z" />
+        <path className="tl-wing" d="M-4 -2 Q2 -20 14 -22 Q8 -10 6 -1 z" />
+      </g>
+    </g>
+  )
+}
 
 export function TitleLandscape({
   tod,
@@ -103,6 +155,8 @@ export function TitleLandscape({
   const lamp = lampOn(tod, weather)
   const clear = weather === 'clear' || weather === null
   const overcast = weather === 'cloudy' || weather === 'rain' || weather === 'thunder' || weather === 'snow'
+  // カラスは、昼間（朝・昼）で、雨・雷・雪でないとき
+  const crows = (tod === 'morning' || tod === 'day') && (weather === null || weather === 'clear' || weather === 'cloudy')
   // 地面にかける色（時間帯と天気）
   const shade = night
     ? 'rgba(10,18,42,0.6)'
@@ -117,7 +171,48 @@ export function TitleLandscape({
             : 'rgba(0,0,0,0)'
   const frame = night ? '#5c7869' : '#7fa391'
   const roof = night ? '#4a6356' : '#6a8e7c'
-  const B = BOOTH
+  const B = { ...BOOTH, y: BASE - BOOTH.h }
+  const wood = '#6b5546'
+
+  /** 季節ごとの、田んぼの帯（top〜bottom） */
+  const paddy = (top: number, bottom: number, big: boolean, key: string) => {
+    const k = big ? 1.8 : 1
+    if (snowy)
+      return (
+        <g key={key}>
+          <rect x="0" y={top} width="1000" height={bottom - top} fill={g.water} />
+          <path d={bumps(top + 4, bottom - top - 4, 90 * k, 6 * k)} fill={g.riceDark} opacity="0.55" />
+        </g>
+      )
+    if (season === 'spring')
+      // 水を張った田んぼ（空が映る）に、小さな苗が並ぶ
+      return (
+        <g key={key}>
+          <rect x="0" y={top} width="1000" height={bottom - top} fill={g.water} />
+          <rect x="0" y={top} width="1000" height={(bottom - top) * 0.5} fill={s1} opacity="0.35" />
+          <path d={seedlings(top + (bottom - top) * 0.45, 22 * k, 3.2 * k, 6)} fill={g.rice} />
+          <path d={seedlings(top + (bottom - top) * 0.9, 22 * k, 3.8 * k, 17)} fill={g.riceDark} />
+        </g>
+      )
+    if (season === 'winter')
+      // 刈り取ったあとの、何もない田んぼ
+      return (
+        <g key={key}>
+          <rect x="0" y={top} width="1000" height={bottom - top} fill={g.water} />
+          <path d={stubble(top + (bottom - top) * 0.45, 26 * k, 3 * k, 4 * k, 8)} fill={g.riceDark} />
+          <path d={stubble(top + (bottom - top) * 0.85, 26 * k, 3.4 * k, 5 * k, 21)} fill={g.riceDark} />
+        </g>
+      )
+    // 夏：青々とした稲／秋：実って頭を垂れる稲穂。丸いふくらみを重ねた平らな形
+    return (
+      <g key={key}>
+        <rect x="0" y={top} width="1000" height={bottom - top} fill={g.water} />
+        <path d={bumps(top + 6 * k, bottom - top, 20 * k, 9 * k)} fill={g.riceDark} />
+        <path d={bumps(top + 12 * k, bottom - top, 24 * k, 10 * k, 9)} fill={g.rice} />
+        {season === 'autumn' && <path d={bumps(top + 24 * k, bottom - top, 18 * k, 7 * k, 4)} fill={g.riceDark} opacity="0.55" />}
+      </g>
+    )
+  }
 
   return (
     <div className={`title-landscape season-${season} w-${weather ?? 'none'} t-${tod}`} aria-hidden="true">
@@ -182,9 +277,16 @@ export function TitleLandscape({
             <path className="tl-bolt" d="M650 60l-34 92h26l-30 96 70-118h-28l26-70z" fill="#fff8d6" />
           </g>
         )}
+        {/* 昼の空を、右から左へ横切るカラス */}
+        {crows && (
+          <g>
+            <Crow cls="c1" y={250} scale={1.5} />
+            <Crow cls="c2" y={285} scale={1.2} />
+          </g>
+        )}
       </svg>
 
-      {/* 地面：山・田んぼ・電話ボックス・街灯 */}
+      {/* 地面：真横から見た、横一本の構図 */}
       <svg className="tl-ground" viewBox="0 380 1000 520" preserveAspectRatio="xMidYMin slice">
         <defs>
           <radialGradient id="tl-glow" cx="0.5" cy="0.5" r="0.5">
@@ -193,12 +295,9 @@ export function TitleLandscape({
             <stop offset="1" stopColor="#ffd98a" stopOpacity="0" />
           </radialGradient>
           <linearGradient id="tl-cone" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#fff1c2" stopOpacity="0.6" />
-            <stop offset="1" stopColor="#ffe3a0" stopOpacity="0.1" />
+            <stop offset="0" stopColor="#fff1c2" stopOpacity="0.55" />
+            <stop offset="1" stopColor="#ffe3a0" stopOpacity="0.08" />
           </linearGradient>
-          <clipPath id="tl-fields">
-            <rect x="0" y={ROWS[0]} width="1000" height={900 - ROWS[0]} />
-          </clipPath>
         </defs>
 
         {/* 夕日（山に沈みかけている） */}
@@ -209,7 +308,7 @@ export function TitleLandscape({
           </g>
         )}
 
-        {/* 遠くの山・近くの山 */}
+        {/* 山 */}
         <path d={FAR} fill={g.far} />
         <path d={NEAR} fill={g.near} />
         {!snowy && (
@@ -219,126 +318,81 @@ export function TitleLandscape({
             ))}
           </g>
         )}
-
-        {/* 山に、時間帯・天気の色をかける */}
         <path d={FAR} fill={shade} />
         <path d={NEAR} fill={shade} />
 
-        {/* 田んぼ */}
-        <rect x="0" y={ROWS[0] - 6} width="1000" height={900 - ROWS[0] + 6} fill={g.field} />
-        <g clipPath="url(#tl-fields)">
-          {ROWS.slice(0, -1).map((y, i) => (
-            <rect key={y} x="0" y={y} width="1000" height={ROWS[i + 1] - y} fill={i % 2 ? g.dark : g.field} opacity="0.5" />
-          ))}
-          {!snowy && season === 'spring' && (
-            // 水を張った田んぼに空が映り、苗が並ぶ
-            <g>
-              <rect x="0" y={ROWS[0]} width="1000" height="360" fill={s1} opacity="0.4" />
-              {ROWS.slice(1, -1).flatMap((y, i) =>
-                Array.from({ length: 14 + i * 3 }, (_, k) => {
-                  const x = ((k + 0.5) / (14 + i * 3)) * 1000
-                  const yy = y + (ROWS[i + 2] - y) * 0.55
-                  const h = 2.5 + i * 1.8
-                  return <path key={`${y}-${k}`} d={`M${x} ${yy}l-${h / 3} -${h}M${x} ${yy}l${h / 3} -${h}M${x} ${yy}v-${h * 1.1}`} stroke="#5f9442" strokeWidth={0.9 + i * 0.35} />
-                }),
-              )}
-            </g>
-          )}
-          {!snowy && season === 'summer' && (
-            // 青々と伸びた稲
-            <g stroke="#3b7330" opacity="0.6" strokeLinecap="round">
-              {ROWS.slice(0, -1).flatMap((y, i) =>
-                Array.from({ length: 12 + i * 4 }, (_, k) => {
-                  const x = ((k + 0.5) / (12 + i * 4)) * 1000
-                  const y2 = ROWS[i + 1]
-                  return <path key={`${y}-${k}`} d={`M${x} ${y2 - 2}q${k % 2 ? 3 : -3} -${(y2 - y) * 0.5} ${k % 2 ? 5 : -5} -${y2 - y - 4}`} fill="none" strokeWidth={0.7 + i * 0.6} />
-                }),
-              )}
-            </g>
-          )}
-          {!snowy && season === 'autumn' && (
-            // 実って、こうべを垂れる稲穂
-            <g fill="none" stroke="#a87a22" strokeLinecap="round">
-              {ROWS.slice(2, -1).flatMap((y, i) =>
-                Array.from({ length: 16 + i * 4 }, (_, k) => {
-                  const x = ((k + 0.5) / (16 + i * 4)) * 1000
-                  const s = 3 + i * 2.6
-                  return <path key={`${y}-${k}`} d={`M${x} ${y + s * 1.7}q${s * 0.2} -${s} ${s} -${s * 0.6}`} strokeWidth={0.9 + i * 0.55} />
-                }),
-              )}
-            </g>
-          )}
-          {!snowy && season === 'winter' && (
-            // 刈り取ったあとの切り株だけ
-            <g stroke="#7a6446" opacity="0.7">
-              {ROWS.slice(2, -1).flatMap((y, i) =>
-                Array.from({ length: 12 + i * 3 }, (_, k) => {
-                  const x = ((k + 0.5) / (12 + i * 3)) * 1000 + (i % 2) * 18
-                  const yy = y + (ROWS[i + 3] - y) * 0.5
-                  return <line key={`${y}-${k}`} x1={x} y1={yy} x2={x} y2={yy - (1.5 + i)} strokeWidth={1 + i * 0.4} />
-                }),
-              )}
-            </g>
-          )}
-          {/* 畦（あぜ） */}
-          <g stroke={g.ridge} strokeLinecap="round">
-            {ROWS.slice(1, -1).map((y, i) => (
-              <line key={y} x1="0" y1={y} x2="1000" y2={y} strokeWidth={1.2 + i * 1.2} />
-            ))}
-            {FANS.map((bx) => (
-              <line key={bx} x1={fanX(bx, ROWS[0])} y1={ROWS[0]} x2={bx} y2="900" strokeWidth="6" />
-            ))}
+        {/* 奥の田んぼ（2枚）と、そのあいだの畦 */}
+        {paddy(Y.paddyTop, Y.aze, false, 'p1')}
+        <rect x="0" y={Y.aze} width="1000" height="6" fill={g.verge} />
+        {paddy(Y.aze + 6, Y.verge, false, 'p2')}
+
+        {/* 路肩・道・手前の田んぼ（どれも横一本） */}
+        <rect x="0" y={Y.verge} width="1000" height={Y.road - Y.verge} fill={g.verge} />
+        <rect x="0" y={Y.road} width="1000" height={Y.roadEnd - Y.road} fill={g.road} />
+        <rect x="0" y={Y.road + 2} width="1000" height="3" fill="#000" opacity="0.06" />
+        <rect x="0" y={Y.roadEnd} width="1000" height={Y.front - Y.roadEnd} fill={g.verge} />
+        {paddy(Y.front, 900, true, 'p3')}
+
+        {/* 電柱（路肩に立つ）と電線 */}
+        {POLES.map((x) => (
+          <g key={x}>
+            <rect x={x} y={POLE.top + 10} width="8" height={BASE - POLE.top - 8} fill={wood} />
+            <rect x={x - 12} y={POLE.top + 22} width="32" height="4" fill={wood} />
           </g>
-        </g>
+        ))}
+        <path
+          d={`M-20 ${POLE.top + 34} Q160 ${POLE.top + 58} ${POLES[0] + 4} ${POLE.top + 24} Q${(POLES[0] + POLE.x) / 2} ${POLE.top + 54} ${POLE.x + 4} ${POLE.top + 12} Q${(POLE.x + POLES[1]) / 2} ${POLE.top + 48} ${POLES[1] + 4} ${POLE.top + 24} Q960 ${POLE.top + 52} 1020 ${POLE.top + 34}`}
+          stroke="#3d3a3a"
+          strokeWidth="1.4"
+          fill="none"
+          opacity="0.75"
+        />
 
-        {/* 電話へ続く、細い農道 */}
-        <path d={`M420 900 L${B.x + 18} ${BASE} L${B.x + B.w - 14} ${BASE} L620 900 Z`} fill={snowy ? '#e4eaee' : '#c8b28a'} />
-        {snowy && <path d={`M488 900 L${B.x + 30} ${BASE} M552 900 L${B.x + 44} ${BASE}`} stroke="#cfd8df" strokeWidth="3" fill="none" />}
-
-        {/* 遠くの電柱と電線 */}
-        <g stroke="#3d3a3a" strokeWidth="2">
-          <line x1="452" y1="530" x2="452" y2="572" />
-          <line x1="444" y1="536" x2="460" y2="536" />
-          <line x1="398" y1="540" x2="398" y2="566" strokeWidth="1.5" />
-          <line x1="392" y1="544" x2="404" y2="544" strokeWidth="1.5" />
-        </g>
-        <path d={`M100 566 Q250 574 398 544 Q425 552 452 536 Q540 556 ${POLE.x + 3} ${POLE.top + 10} M${POLE.x + 3} ${POLE.top + 10} Q820 560 1000 540`} stroke="#3d3a3a" strokeWidth="1.3" fill="none" opacity="0.7" />
-
-        {/* 田んぼに、時間帯・天気の色をかける（山は上でかけている。空にはかけない） */}
-        <rect x="0" y={ROWS[0] - 6} width="1000" height={900 - ROWS[0] + 6} fill={shade} />
+        {/* 田んぼ・道に、時間帯・天気の色をかける */}
+        <rect x="0" y={Y.paddyTop} width="1000" height={900 - Y.paddyTop} fill={shade} />
 
         {/* 街灯の光 */}
         {lamp && (
           <g className="tl-lamp-light">
-            <path d={`M${LAMP.x - 4} ${LAMP.y} L${LAMP.x - 90} ${BASE} L${LAMP.x + 70} ${BASE} Z`} fill="url(#tl-cone)" />
-            <ellipse cx={LAMP.x - 10} cy={BASE} rx="120" ry="26" fill="url(#tl-glow)" />
+            <path d={`M${LAMP.x - 4} ${LAMP.y} L${LAMP.x - 88} ${BASE + 6} L${LAMP.x + 72} ${BASE + 6} Z`} fill="url(#tl-cone)" />
+            <ellipse cx={LAMP.x - 8} cy={BASE + 8} rx="130" ry="20" fill="url(#tl-glow)" />
             <circle cx={LAMP.x} cy={LAMP.y} r="46" fill="url(#tl-glow)" />
           </g>
         )}
 
-        {/* 電話ボックス */}
+        {/* 電話ボックス（路肩に立つ） */}
         <g>
-          <ellipse cx={B.x + B.w / 2} cy={BASE} rx={B.w * 0.62} ry="7" fill="#000" opacity="0.2" />
+          <ellipse cx={B.x + B.w / 2} cy={BASE} rx={B.w * 0.6} ry="4" fill="#000" opacity="0.2" />
           <rect x={B.x} y={B.y + 10} width={B.w} height={B.h - 10} rx="4" fill={frame} />
           <rect x={B.x + 6} y={B.y + 24} width={B.w - 12} height={B.h - 30} rx="3" fill={lamp ? '#fae9b8' : '#d6e6e6'} opacity={lamp ? 0.96 : 0.88} />
-          <path d={`M${B.x + B.w / 2} ${B.y + 24}v${B.h - 30}M${B.x + 6} ${B.y + 70}h${B.w - 12}`} stroke={frame} strokeWidth="3" />
+          <rect x={B.x + B.w / 2 - 1.5} y={B.y + 24} width="3" height={B.h - 30} fill={frame} />
+          <rect x={B.x + 6} y={B.y + 68} width={B.w - 12} height="3" fill={frame} />
           <rect x={B.x - 5} y={B.y} width={B.w + 10} height="14" rx="4" fill={roof} />
           <rect x={B.x + 18} y={B.y + 3} width={B.w - 36} height="8" rx="2" fill={lamp ? '#fff4cf' : '#eef2ec'} />
-          {/* 中の電話 */}
           <rect x={B.x + 13} y={B.y + 40} width="20" height="26" rx="3" fill="#4f8a69" />
           <rect x={B.x + 15} y={B.y + 35} width="16" height="6" rx="3" fill="#3c6b51" />
           <rect x={B.x + 17} y={B.y + 47} width="12" height="4" rx="1" fill="#dfeee5" opacity="0.8" />
           {snowy && <path d={`M${B.x - 5} ${B.y + 1} Q${B.x + B.w / 2} ${B.y - 14} ${B.x + B.w + 5} ${B.y + 1} Z`} fill="#f6f8fa" />}
         </g>
 
-        {/* 街灯（木の電柱に、腕木と傘つきの電灯） */}
+        {/* 街灯（木の電柱に、腕木と傘つきの電灯。路肩に立つ） */}
         <g>
-          <rect x={POLE.x} y={POLE.top} width="9" height={BASE - POLE.top + 2} fill="#6b5546" />
-          <line x1={POLE.x + 2} y1={POLE.top + 18} x2={LAMP.x} y2={LAMP.y - 8} stroke="#4b4141" strokeWidth="4" />
+          <rect x={POLE.x} y={POLE.top} width="9" height={BASE - POLE.top} fill={wood} />
+          <rect x={POLE.x - 12} y={POLE.top + 10} width="33" height="4" fill={wood} />
+          <path d={`M${POLE.x + 2} ${POLE.top + 20} L${LAMP.x + 2} ${LAMP.y - 10} L${LAMP.x + 2} ${LAMP.y - 6} L${POLE.x + 2} ${POLE.top + 25} Z`} fill="#4b4141" />
           <path d={`M${LAMP.x - 16} ${LAMP.y - 8}h32l-7 10h-18z`} fill="#4b4141" />
           <ellipse cx={LAMP.x} cy={LAMP.y + 2} rx="8" ry="4" fill={lamp ? '#fff3c4' : '#c9c6bd'} />
           {snowy && <rect x={POLE.x - 1} y={POLE.top - 3} width="11" height="5" rx="2" fill="#f6f8fa" />}
         </g>
+
+        {/* 街灯の光に寄ってくる虫 */}
+        {lamp && !snowy && (
+          <g className="tl-moths" transform={`translate(${LAMP.x} ${LAMP.y + 6})`} fill={night ? '#fff6d6' : '#f3e6c0'}>
+            {MOTHS.map((m) => (
+              <circle key={m.cls} className={`tl-moth ${m.cls}`} r={m.r} />
+            ))}
+          </g>
+        )}
       </svg>
 
       {/* 雨・雪（いちばん手前） */}
@@ -351,9 +405,9 @@ export function TitleLandscape({
               ))}
             </g>
           ) : (
-            <g className="tl-rain" stroke={night ? '#9fb0c8' : '#eef2f6'} strokeWidth="1.4" opacity="0.6">
+            <g className="tl-rain" fill={night ? '#9fb0c8' : '#eef2f6'} opacity="0.55">
               {LOOP.map(([x, y], i) => (
-                <line key={i} x1={x} y1={y} x2={x - 8} y2={y + 26} />
+                <path key={i} d={`M${x} ${y}l1.4 0l-8 26l-1.4 0z`} />
               ))}
             </g>
           )}

@@ -1712,6 +1712,80 @@ button.cal-day.selected {
 @keyframes tl-lamp {
   50% { opacity: 0.88; }
 }
+/* 街灯に寄ってくる虫：ふらふらと明かりのまわりを回る */
+.tl-moth {
+  animation: tl-m1 2.6s ease-in-out infinite;
+}
+.tl-moth.m2 { animation: tl-m2 3.4s ease-in-out infinite; }
+.tl-moth.m3 { animation: tl-m3 1.7s ease-in-out infinite; }
+.tl-moth.m4 { animation: tl-m4 4.2s ease-in-out infinite; }
+.tl-moth.m5 { animation: tl-m5 2.1s ease-in-out infinite; }
+@keyframes tl-m1 {
+  0%, 100% { transform: translate(-14px, -4px); }
+  25% { transform: translate(4px, -16px); }
+  50% { transform: translate(16px, 2px); }
+  75% { transform: translate(-2px, 14px); }
+}
+@keyframes tl-m2 {
+  0%, 100% { transform: translate(20px, 8px); }
+  30% { transform: translate(-6px, 22px); }
+  60% { transform: translate(-22px, -6px); }
+  80% { transform: translate(6px, -20px); }
+}
+@keyframes tl-m3 {
+  0%, 100% { transform: translate(6px, -6px); }
+  20% { transform: translate(-8px, -2px); }
+  45% { transform: translate(2px, 9px); }
+  70% { transform: translate(10px, 1px); }
+}
+@keyframes tl-m4 {
+  0%, 100% { transform: translate(-28px, 10px); }
+  35% { transform: translate(-4px, -26px); }
+  65% { transform: translate(26px, -4px); }
+  85% { transform: translate(8px, 24px); }
+}
+@keyframes tl-m5 {
+  0%, 100% { transform: translate(10px, 14px); }
+  33% { transform: translate(-14px, 6px); }
+  66% { transform: translate(0, -14px); }
+}
+
+/* 昼の空を、右から左へ横切るカラス（はばたきながら、少しずつ高度を上げる） */
+.tl-crow {
+  transform: translate(-300px, 0);
+  animation: tl-crow 24s linear infinite;
+}
+.tl-crow.c2 {
+  animation-delay: 1.4s;
+}
+@keyframes tl-crow {
+  0% { transform: translate(1100px, var(--y)); }
+  55% { transform: translate(-150px, calc(var(--y) - 40px)); }
+  100% { transform: translate(-150px, calc(var(--y) - 40px)); }
+}
+.tl-wing {
+  transform-box: fill-box;
+  transform-origin: 30% 100%;
+  animation: tl-flap 0.5s ease-in-out infinite alternate;
+}
+.tl-crow.c2 .tl-wing {
+  animation-duration: 0.42s;
+}
+@keyframes tl-flap {
+  from { transform: scaleY(1); }
+  to { transform: scaleY(-0.7); }
+}
+/* 動きを減らす設定では、カラスと虫は出さない */
+.reduce-motion .tl-crow,
+.reduce-motion .tl-moths {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tl-crow,
+  .tl-moths {
+    display: none;
+  }
+}
 .reduce-motion .title-landscape *,
 .reduce-motion .title-landscape {
   animation: none !important;
