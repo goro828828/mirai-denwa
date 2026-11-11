@@ -1795,3 +1795,107 @@ button.cal-day.selected {
     animation: none !important;
   }
 }
+
+/* ---------- 初回だけの導入 ---------- */
+/* 拾った瞬間、白くとぶ */
+.warp-out::after,
+.warp-in::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: #fffaf0;
+  pointer-events: none;
+}
+.warp-out::after {
+  animation: warp-out 1.6s ease-in forwards;
+}
+.warp-in::before {
+  animation: warp-in 2.2s ease-out forwards;
+}
+@keyframes warp-out {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes warp-in {
+  from { opacity: 1; }
+  to { opacity: 0; visibility: hidden; }
+}
+.lost-scene {
+  justify-content: flex-end;
+}
+.prologue-panel {
+  background: rgba(251, 245, 233, 0.92);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(30, 20, 10, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.prologue-lines {
+  min-height: 3.6em;
+  font-size: 16px;
+  line-height: 1.8;
+}
+.prologue-lines p {
+  margin: 0;
+}
+/* 圏外のスマホ（画面の上のほうに、手に持ったように） */
+.nosignal-phone {
+  position: fixed;
+  left: 50%;
+  top: calc(80px + env(safe-area-inset-top));
+  transform: translateX(-50%) rotate(-4deg);
+  width: 150px;
+  height: 250px;
+  border-radius: 26px;
+  background: #23252b;
+  padding: 10px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  z-index: 2;
+}
+.nsp-status {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #e9edf2;
+  padding: 2px 8px 6px;
+}
+.nsp-out {
+  color: #ffb4a6;
+  font-weight: 700;
+}
+.nsp-body {
+  height: calc(100% - 22px);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #3a4150, #2b313d);
+  color: #e9edf2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+}
+.nsp-body svg {
+  width: 52px;
+  height: 52px;
+  color: #e9edf2;
+}
+.nsp-body p {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+.nsp-body small {
+  font-size: 9px;
+  opacity: 0.75;
+  padding: 0 10px;
+}
+.fill-lead {
+  margin: 0;
+  color: var(--on-bg);
+  font-size: 15px;
+}

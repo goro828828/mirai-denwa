@@ -174,7 +174,7 @@ export function isDaytime(lat: number, lon: number, date = new Date()): boolean 
 
 // ---------------- 環境音 ----------------
 
-export type AmbientKey = 'clear-day' | 'clear-night' | 'cloudy-day' | 'cloudy-night' | 'rain' | 'thunder'
+export type AmbientKey = 'clear-day' | 'clear-night' | 'cloudy-day' | 'cloudy-night' | 'rain' | 'thunder' | 'cafe'
 
 /**
  * 環境音ファイルと音量。音源の出典とライセンスは public/audio/ambient/CREDITS.md と lib/credits.ts を参照。
@@ -187,6 +187,8 @@ export const AMBIENT_SOURCES: Record<AmbientKey, { file: string; level: number }
   'cloudy-night': { file: 'clear-night', level: 0.55 },
   rain: { file: 'rain', level: 1 },
   thunder: { file: 'thunder', level: 1 },
+  /** 初回だけの導入：いつもの帰り道（カフェのそば）の音 */
+  cafe: { file: 'cafe', level: 0.9 },
 }
 
 /**

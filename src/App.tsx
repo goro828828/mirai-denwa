@@ -9,6 +9,7 @@ import { FillScene, PickupScene, TitleScene } from './scenes/Intro'
 import { EjectScene, PhoneScene } from './scenes/Phone'
 import { CallScene, type CallResult } from './scenes/Call'
 import { HistoryScene, ResultScene } from './scenes/Outro'
+import { LostScene, ReturnScene } from './scenes/Prologue'
 import { SettingsDialog } from './components/Settings'
 import { pickYearsFor, type PrevCall } from './story/engine'
 import { pickIllustration } from './lib/illustrations'
@@ -34,7 +35,24 @@ function landscapePreview(): { season?: Season; tod?: TimeOfDay; weather?: Weath
   }
 }
 
-type Scene = 'title' | 'pickup' | 'fill' | 'phone' | 'call' | 'eject' | 'result' | 'history'
+type Scene = 'title' | 'pickup' | 'lost' | 'fill' | 'phone' | 'call' | 'eject' | 'return' | 'result' | 'history'
+
+/** 初回だけの導入を見終わったか */
+const PROLOGUE_KEY = 'mirai-denwa:prologue-seen:v1'
+function prologueSeen(): boolean {
+  try {
+    return localStorage.getItem(PROLOGUE_KEY) === '1'
+  } catch {
+    return true
+  }
+}
+function markPrologueSeen() {
+  try {
+    localStorage.setItem(PROLOGUE_KEY, '1')
+  } catch {
+    /* noop */
+  }
+}
 
 /** 4項目すべて記入済みなら、登録内容として使う */
 function completeProfile(p: Partial<Profile>): Profile | null {
@@ -80,6 +98,8 @@ export default function App() {
   /** 記入画面を「登録内容の変更だけ」で開いたとき true */
   const [editOnly, setEditOnly] = useState(false)
   const [notice, setNotice] = useState('')
+  /** 初回だけの導入の最中か（通話履歴がなく、まだ導入を見ていないとき） */
+  const [prologue, setPrologue] = useState(false)
   const [history, setHistory] = useState<CallRecord[]>(() => loadHistory())
   const [settings, setSettings] = useState<Settings>(() => loadSettings())
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -105,7 +125,7 @@ export default function App() {
 
   // BGM：タイトル画面と、通話のあとカードに文字が刻まれる場面（カードを受け取る画面まで）で流す
   useEffect(() => {
-    sound.setMusicScene(scene === 'title' || scene === 'eject' || scene === 'result')
+    sound.setMusicScene(scene === 'title' || scene === 'eject' || scene === 'return' || scene === 'result')
   }, [scene])
 
   // ブラウザは、画面に触れるまで音を出せない。最初に触れたときに音を準備する（タイトル画面の BGM もここから始まる）
@@ -144,9 +164,15 @@ export default function App() {
 
   // 天気が決まったら環境音を流す（取得できなければ無音）
   useEffect(() => {
-    if (scene === 'title' || scene === 'pickup' || scene === 'fill' || weather === undefined) return
+    // 初回の導入：いつもの帰り道（拾う場面・戻ってきた場面）は、カフェのそばの音
+    if (prologue && (scene === 'pickup' || scene === 'return' || scene === 'result')) return sound.playAmbient('cafe')
+    // 畦道に立ってからは、天気に合わせた音（初回は記入中も流す）
+    const quiet = scene === 'title' || scene === 'pickup' || (scene === 'fill' && !prologue)
+    if (quiet) return
+    // 天気がまだわからない（位置情報なし・県もまだ）ときは、帰り道の音だけ止めて、天気がわかるまで待つ（推測はしない）
+    if (weather === undefined) return void (prologue && sound.stopAmbient())
     sound.playAmbient(ambientFor(weather))
-  }, [weather, scene])
+  }, [weather, scene, prologue])
 
   const start = () => {
     sound.unlock()
@@ -157,6 +183,7 @@ export default function App() {
     setCallIndex(history.length + 1)
     setPrev(prevFrom(history[0]))
     setNotice('')
+    setPrologue(history.length === 0 && !prologueSeen())
     setScene('pickup')
     // 天気は通話のたびに取り直す（前回の天気を使い回さない）
     weatherFor.current = null
@@ -232,6 +259,7 @@ export default function App() {
   }
 
   const toTitle = () => {
+    setPrologue(false)
     sound.stopAmbient()
     setScene('title')
   }
@@ -341,16 +369,30 @@ export default function App() {
             reduced={reduced}
             saved={saved}
             onDone={() => setScene('fill')}
+            onWarp={prologue ? () => setScene('lost') : undefined}
             onUse={() => saved && onFilled(saved)}
             onEdit={() => setScene('fill')}
           />
         )}
+        {scene === 'lost' && <LostScene landscape={{ ...landscape, weather: weather?.kind ?? landscape.weather }} reduced={reduced} onDone={() => setScene('fill')} />}
         {scene === 'fill' && (
-          <FillScene initial={saved ?? loadDraft<Profile>()} onPrefChange={requestWeather} onDone={onFilled} submitLabel={editOnly ? '保存する' : undefined} />
+          <FillScene
+            lead={prologue && !editOnly ? '電話の台でカードを裏返すと、名前を書く欄があった。' : undefined} initial={saved ?? loadDraft<Profile>()} onPrefChange={requestWeather} onDone={onFilled} submitLabel={editOnly ? '保存する' : prologue ? 'このカードで電話をかける' : undefined} />
         )}
         {scene === 'phone' && profile && <PhoneScene profile={profile} weather={weather} years={years} onConnected={() => setScene('call')} onManualWeather={chooseSky} />}
         {scene === 'call' && profile && <CallScene profile={profile} weather={weather ?? null} years={years} callIndex={callIndex} prev={prev} reduced={reduced} onEnd={onCallEnd} />}
-        {scene === 'eject' && record && <EjectScene record={record} reduced={reduced} onDone={() => setScene('result')} />}
+        {scene === 'eject' && record && (
+          <EjectScene
+            record={record}
+            reduced={reduced}
+            onDone={() => {
+              if (!prologue) return setScene('result')
+              markPrologueSeen()
+              setScene('return')
+            }}
+          />
+        )}
+        {scene === 'return' && <ReturnScene reduced={reduced} onDone={() => setScene('result')} />}
         {scene === 'result' && record && (
           <>
             {saveFailed && <p className="toast">この端末では履歴を保存できませんでした。カードは画像で保存できます。</p>}

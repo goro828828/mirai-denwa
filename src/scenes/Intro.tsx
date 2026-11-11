@@ -69,8 +69,11 @@ export function PickupScene({
   onDone,
   onUse,
   onEdit,
+  onWarp,
 }: {
   reduced: boolean
+  /** 初回だけの導入：拾った瞬間、知らない畦道へ（裏返さずに次の場面へ） */
+  onWarp?: () => void
   /** 登録済みの内容（2回目以降）。あれば記入済みのカードを出す */
   saved: Profile | null
   /** 初めて：カードに書きこむ */
@@ -92,8 +95,20 @@ export function PickupScene({
 
   const ready = shown >= LINES.length
 
+  // 初回の導入：拾い上げたあと、まわりの音が遠のき、白くとぶ
+  const [warping, setWarping] = useState(false)
+  useEffect(() => {
+    if (!onWarp || stage !== 'front') return
+    const a = window.setTimeout(() => setWarping(true), 2400)
+    const b = window.setTimeout(onWarp, 2400 + (reduced ? 300 : 1600))
+    return () => {
+      window.clearTimeout(a)
+      window.clearTimeout(b)
+    }
+  }, [onWarp, stage, reduced])
+
   return (
-    <section className="scene pickup-scene">
+    <section className={`scene pickup-scene${warping ? ' warp-out' : ''}`}>
       <div className="narration" aria-live="polite">
         {LINES.slice(0, shown).map((l) => (
           <p key={l} className="fade-in">
@@ -102,7 +117,9 @@ export function PickupScene({
         ))}
         {stage !== 'ground' && (
           <p className="fade-in">
-            {stage === 'front'
+            {stage === 'front' && onWarp
+              ? '拾い上げた、その瞬間——まわりの音が、すっと遠のいた。'
+              : stage === 'front'
               ? saved
                 ? '拾い上げると、見覚えのあるテレフォンカードだった。'
                 : '拾い上げると、それは古いテレフォンカードだった。'
@@ -141,7 +158,7 @@ export function PickupScene({
 
       <div className="stack bottom">
         {stage === 'ground' && <p className="hint">{ready ? 'カードをタップして拾う' : ' '}</p>}
-        {stage === 'front' && (
+        {stage === 'front' && !onWarp && (
           <button
             type="button"
             className="btn primary"
@@ -192,7 +209,10 @@ export function FillScene({
   onPrefChange,
   onDone,
   submitLabel = '公衆電話をさがす',
+  lead,
 }: {
+  /** カードの上に出す一文（初回の導入で使う） */
+  lead?: string
   /** 最後のボタンの文言（登録内容の変更だけのときは「保存する」） */
   submitLabel?: string
   initial: Partial<Profile>
@@ -252,6 +272,7 @@ export function FillScene({
 
   return (
     <section className="scene fill-scene">
+      {lead && <p className="fill-lead fade-in">{lead}</p>}
       <div className="fill-card">
         <CardForm values={values} active={field} onSelect={(f) => setStep(STEPS.indexOf(f))} />
       </div>

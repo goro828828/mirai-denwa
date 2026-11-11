@@ -46,4 +46,13 @@ export const AMBIENT_CREDITS: Credit[] = [
     source: 'https://archive.org/details/StormSicily04082018Afternoon',
     note: '40分の録音から20分を抜粋し、音量を調整',
   },
+  {
+    use: 'いつもの帰り道（初回の導入・カフェのそば）',
+    title: 'Outdoor Cafe, Herefordshire, UK',
+    author: 'David Pitt',
+    license: 'Public Domain Mark 1.0',
+    licenseUrl: 'https://creativecommons.org/publicdomain/mark/1.0/',
+    source: 'https://archive.org/details/aporee_69440_80838',
+    note: '33分の録音から、音量の急な変化が少ない20分を抜粋し、音量を調整',
+  },
 ]
