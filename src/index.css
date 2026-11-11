@@ -1575,3 +1575,149 @@ button.cal-day.selected {
   background: var(--paper-2);
   box-shadow: none;
 }
+
+/* ---------- タイトル画面の風景 ---------- */
+.title-scene {
+  position: relative;
+}
+.title-landscape {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+.tl-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* 地面は画面の下から。地平線（山の上）が、画面の上から約4割の高さに来る */
+.tl-ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 60%;
+  display: block;
+}
+/* 空が明るいときは濃い文字、暗いときは明るい文字 */
+.title-scene.title-light {
+  --on-bg: #2f2622;
+  --on-bg-sub: #4f433b;
+}
+.title-scene.title-dark {
+  --on-bg: #fbf3e6;
+  --on-bg-sub: #e9ddcc;
+}
+.title-scene .title-block {
+  text-shadow: 0 1px 12px rgba(255, 250, 240, 0.55);
+}
+.title-scene.title-dark .title-block {
+  text-shadow: 0 1px 14px rgba(10, 14, 30, 0.6);
+}
+/* ボタンのまわりは、田んぼの上でも読めるように紙の色を敷く */
+.title-scene > .stack {
+  --on-bg: var(--ink);
+  --on-bg-sub: var(--sub);
+  background: rgba(251, 245, 233, 0.9);
+  border-radius: var(--radius);
+  padding: 14px;
+  gap: 10px;
+  box-shadow: 0 8px 24px rgba(30, 20, 10, 0.18);
+}
+/* 風景が見えるよう、タイトル画面の下のまとまりは小さめに */
+.title-scene > .stack .title-actions {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 10px;
+}
+.title-scene > .stack .note {
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 0;
+}
+.title-scene .title-block {
+  margin-top: 6vh;
+}
+/* 登録内容の行も1行にまとめる */
+.title-scene > .stack .saved-profile {
+  flex-wrap: nowrap;
+  margin: -6px 0 -8px;
+  font-size: 12px;
+  gap: 6px;
+}
+.title-scene > .stack .saved-profile span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.title-scene > .stack .saved-profile .btn.text {
+  flex: none;
+  font-size: 12px;
+  padding: 0 4px;
+}
+/* 横長の画面（パソコンなど）では、地面を高くして電話がボタンに隠れないようにする */
+@media (min-aspect-ratio: 1/1) {
+  .tl-ground {
+    height: 80%;
+  }
+}
+/* 背の低いスマホでも、電話がボタンに隠れないように */
+@media (max-aspect-ratio: 1/1) and (max-height: 720px) {
+  .tl-ground {
+    height: 68%;
+  }
+}
+
+/* 雨・雪・星・稲光 */
+.tl-rain {
+  animation: tl-fall 1.6s linear infinite;
+}
+.tl-snow {
+  animation: tl-fall 40s linear infinite;
+}
+@keyframes tl-fall {
+  from { transform: translateY(0); }
+  to { transform: translateY(900px); }
+}
+.tl-stars circle {
+  animation: tl-twinkle 4s ease-in-out infinite;
+}
+@keyframes tl-twinkle {
+  50% { opacity: 0.35; }
+}
+.tl-flash,
+.tl-bolt {
+  opacity: 0;
+  animation: tl-flash 7s linear infinite;
+}
+.tl-flash {
+  animation-name: tl-flash-sky;
+}
+@keyframes tl-flash {
+  0%, 60%, 63%, 65%, 100% { opacity: 0; }
+  61%, 64% { opacity: 1; }
+}
+@keyframes tl-flash-sky {
+  0%, 60%, 63%, 65%, 100% { opacity: 0; }
+  61%, 64% { opacity: 0.35; }
+}
+.tl-lamp-light {
+  animation: tl-lamp 5s ease-in-out infinite;
+}
+@keyframes tl-lamp {
+  50% { opacity: 0.88; }
+}
+.reduce-motion .title-landscape *,
+.reduce-motion .title-landscape {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .title-landscape * {
+    animation: none !important;
+  }
+}

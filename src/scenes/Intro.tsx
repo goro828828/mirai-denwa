@@ -1,3 +1,6 @@
+import type { WeatherKind } from '../types'
+import { TitleLandscape, skyIsDark, type Season } from '../components/TitleLandscape'
+import type { TimeOfDay } from '../lib/weather'
 import { useEffect, useRef, useState } from 'react'
 import { CardForm, CardFront, GENDER_LABEL, LIFESTAGE_LABEL, type FormField } from '../components/PhoneCard'
 import { PREFECTURES, REGIONS } from '../data/prefectures'
@@ -10,6 +13,7 @@ export function TitleScene({
   historyCount,
   saved,
   onEditProfile,
+  landscape,
 }: {
   onStart: () => void
   onHistory: () => void
@@ -17,9 +21,12 @@ export function TitleScene({
   /** 登録済みの内容（2回目以降） */
   saved: Profile | null
   onEditProfile: () => void
+  /** 背景の風景（時間帯・天気・季節） */
+  landscape: { tod: TimeOfDay; weather: WeatherKind | null; season: Season }
 }) {
   return (
-    <section className="scene title-scene">
+    <section className={`scene title-scene${skyIsDark(landscape.tod, landscape.weather) ? ' title-dark' : ' title-light'}`}>
+      <TitleLandscape {...landscape} />
       <div className="title-block">
         <p className="title-eyebrow">いつか懐かしくなる今日を、あなたはどう過ごしますか。</p>
         <h1 className="title">
@@ -29,12 +36,14 @@ export function TitleScene({
         </h1>
       </div>
       <div className="stack">
-        <button type="button" className="btn primary" onClick={onStart}>
-          はじめる
-        </button>
-        <button type="button" className="btn ghost" onClick={onHistory}>
-          通話履歴{historyCount > 0 ? `（${historyCount}）` : ''}
-        </button>
+        <div className="title-actions">
+          <button type="button" className="btn primary" onClick={onStart}>
+            はじめる
+          </button>
+          <button type="button" className="btn ghost" onClick={onHistory}>
+            通話履歴{historyCount > 0 ? `（${historyCount}）` : ''}
+          </button>
+        </div>
         {saved && (
           <p className="saved-profile">
             <span>

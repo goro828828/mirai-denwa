@@ -83,6 +83,9 @@ const WHY = (c: CallContext): Variant[] => [
 /** 「最近の◯◯」のあと：2回目は「ありがとう」の質問、それ以外は「よく話す人」 */
 const afterTopic = (c: CallContext) => (c.script === 'second' ? 'thanks' : 'people')
 
+/** 50・60年後の自分は、何回目の電話かを覚えていない（あなたが教える） */
+const forgetsCount = (c: CallContext) => c.years >= 50 && c.years < 100
+
 /** 前回の電話から、どれくらいたったか */
 const sinceLine = (c: CallContext): Variant => {
   const h = c.prev?.hoursAgo ?? 0
@@ -186,18 +189,54 @@ export const NODES: Record<string, StoryNode> = {
     next: 'intro3',
   },
 
+  /**
+   * 何回目の電話かは、あなた（受け手）が言う。
+   * 50・60年後の自分は、何回目だったかを覚えていない。あなたが教えてあげる。
+   */
   intro3: {
     id: 'intro3',
-    say: (c) => [
-      t(`${c.name}、今日もつながった{ね}。`, `${c.name}、今日もつながった{ね}。声が聞けて、うれしい{よ}。`, `${c.name}……今日も、つながった{ね}。`),
-      t(`こうして話すの、${c.callIndex}回目{だね}。`, undefined, `こうして話すのも、もう${c.callIndex}回目{だね}。`),
-      ...memoLines(c),
-      t('あの電話も、こっちからは、もう懐かしい。', undefined, 'あの電話も、今では遠い思い出{だよ}。'),
-    ],
-    choices: () => [
-      { label: me('もう、そんなに？', undefined, 'もう、そんなに？', 'もうそんなに話してたっけ'), value: 'already', reply: [t('うん。こういう時間が、あとで一番懐かしくなる{よ}。', undefined, 'そう{だよ}。重ねた時間は、ちゃんと残るもん{だよ}。')] },
-      { label: me('覚えててくれたんだ', undefined, '覚えててくれたんだ', 'さすが、覚えてるね'), value: 'remember', reply: [t('もちろん。自分のこと{だから}{ね}。', undefined, '忘れない{よ}。自分のこと{だから}{ね}。')] },
-    ],
+    say: (c) =>
+      forgetsCount(c)
+        ? [
+            t(`${c.name}……今日も、つながった{ね}。`),
+            t('ええと……こうして話すの、何回目だったかな。……年をとると、数えるのが苦手になって{ね}。'),
+          ]
+        : [
+            t(`${c.name}、今日もつながった{ね}。`, `${c.name}、今日もつながった{ね}。声が聞けて、うれしい{よ}。`, `${c.name}……今日も、つながった{ね}。`),
+            ...memoLines(c),
+            t('あの電話も、こっちからは、もう懐かしい。', undefined, 'あの電話も、今では遠い思い出{だよ}。'),
+          ],
+    choices: (c) => {
+      const n = c.callIndex
+      if (forgetsCount(c)) {
+        // 教えてあげたあと、前の電話のことは、ちゃんと思い出す
+        const after = [...memoLines(c), t('あの電話も、今では遠い思い出{だよ}。')]
+        return [
+          {
+            label: me(`${n}回目だよ`, undefined, `${n}回目だよ`, `${n}回目だってば`),
+            value: 'teach',
+            reply: [t(`ああ、${n}回目か。……教えてくれて、ありがとう{ね}。`), ...after],
+          },
+          {
+            label: me(`……${n}回目。覚えてないの？`, undefined, `${n}回目だよ。覚えてないの？`, `もう、${n}回目でしょ。忘れたの？`),
+            value: 'tease',
+            reply: [t(`ふふ、${n}回目か。数は忘れても、話したことは覚え{てる}{よ}。`), ...after],
+          },
+        ]
+      }
+      return [
+        {
+          label: me(`これで${n}回目だね`, undefined, `これで${n}回目だね`, `もう${n}回目だね`),
+          value: 'count',
+          reply: [t('もう、そんなになるんだ{ね}。……こういう時間が、あとで一番懐かしくなる{よ}。', '数えてくれてたんだ{ね}。重ねた時間は、ちゃんと残るもん{だよ}。', '数えてくれてたのかい。重ねた時間は、ちゃんと残るもん{だよ}。')],
+        },
+        {
+          label: me('覚えててくれたんだ', undefined, '覚えててくれたんだ', 'さすが、覚えてるね'),
+          value: 'remember',
+          reply: [t('もちろん。自分のこと{だから}{ね}。', undefined, '忘れない{よ}。自分のこと{だから}{ね}。')],
+        },
+      ]
+    },
     next: 'sky',
   },
 

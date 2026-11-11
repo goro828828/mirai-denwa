@@ -12,6 +12,27 @@ import { HistoryScene, ResultScene } from './scenes/Outro'
 import { SettingsDialog } from './components/Settings'
 import { pickYearsFor, type PrevCall } from './story/engine'
 import { pickIllustration } from './lib/illustrations'
+import { seasonOf, type Season } from './components/TitleLandscape'
+import type { TimeOfDay } from './lib/weather'
+
+/**
+ * タイトル画面の風景を、URL で指定して確かめる（例：?landscape=winter,night,snow）
+ * 季節（spring/summer/autumn/winter）・時間帯（morning/day/evening/night）・天気（clear/cloudy/rain/thunder/snow）
+ */
+function landscapePreview(): { season?: Season; tod?: TimeOfDay; weather?: WeatherKind } {
+  try {
+    const v = new URLSearchParams(location.search).get('landscape')
+    if (!v) return {}
+    const [season, tod, weather] = v.split(',')
+    return {
+      season: (['spring', 'summer', 'autumn', 'winter'] as const).find((x) => x === season),
+      tod: (['morning', 'day', 'evening', 'night'] as const).find((x) => x === tod),
+      weather: (['clear', 'cloudy', 'rain', 'thunder', 'snow'] as const).find((x) => x === weather),
+    }
+  } catch {
+    return {}
+  }
+}
 
 type Scene = 'title' | 'pickup' | 'fill' | 'phone' | 'call' | 'eject' | 'result' | 'history'
 
@@ -63,6 +84,9 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(() => loadSettings())
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [saveFailed, setSaveFailed] = useState(false)
+  /** タイトル画面の風景に使う天気（登録した都道府県、または許可済みなら現在地） */
+  const [titleWeather, setTitleWeather] = useState<WeatherKind | null>(null)
+  const titleWeatherAt = useRef(0)
   const weatherFor = useRef<string | null>(null)
   /** 現在地の天気（取れたら、都道府県の天気より優先する） */
   const hereWeather = useRef<WeatherInfo | null>(null)
@@ -212,7 +236,36 @@ export default function App() {
     setScene('title')
   }
 
+  // タイトル画面の天気：位置情報がすでに許可されていれば現在地、なければ登録した都道府県（10分ごとに取り直す）
+  useEffect(() => {
+    if (scene !== 'title' || Date.now() - titleWeatherAt.current < 10 * 60 * 1000) return
+    titleWeatherAt.current = Date.now()
+    let alive = true
+    void (async () => {
+      let w: WeatherInfo | null = null
+      if (settings.useLocation && navigator.permissions) {
+        const st = await navigator.permissions.query({ name: 'geolocation' }).catch(() => null)
+        if (st?.state === 'granted') {
+          const pos = await getPosition()
+          if (pos) w = await fetchWeatherAt(pos.lat, pos.lon)
+        }
+      }
+      const pref = saved ? findPref(saved.prefCode) : undefined
+      if (!w && pref) w = await fetchWeather(pref)
+      if (alive && w) setTitleWeather(w.kind)
+    })()
+    return () => {
+      alive = false
+    }
+  }, [scene, saved, settings.useLocation])
+
   const tod = useMemo(() => timeOfDay(), [scene])
+  const preview = useMemo(landscapePreview, [])
+  const landscape = {
+    tod: preview.tod ?? tod,
+    weather: preview.weather ?? titleWeather,
+    season: preview.season ?? seasonOf(),
+  }
   const sky = weather?.kind ?? 'none'
 
   return (
@@ -274,6 +327,7 @@ export default function App() {
               onHistory={() => openHistory('title')}
               historyCount={history.length}
               saved={saved}
+              landscape={landscape}
               onEditProfile={() => {
                 setNotice('')
                 setEditOnly(true)
