@@ -333,13 +333,7 @@ export function TitleLandscape({
         <rect x="0" y={Y.roadEnd} width="1000" height={Y.front - Y.roadEnd} fill={g.verge} />
         {paddy(Y.front, 900, true, 'p3')}
 
-        {/* 電柱（路肩に立つ）と電線 */}
-        {POLES.map((x) => (
-          <g key={x}>
-            <rect x={x} y={POLE.top + 10} width="8" height={BASE - POLE.top - 8} fill={wood} />
-            <rect x={x - 12} y={POLE.top + 22} width="32" height="4" fill={wood} />
-          </g>
-        ))}
+        {/* 電線 */}
         <path
           d={`M-20 ${POLE.top + 34} Q160 ${POLE.top + 58} ${POLES[0] + 4} ${POLE.top + 24} Q${(POLES[0] + POLE.x) / 2} ${POLE.top + 54} ${POLE.x + 4} ${POLE.top + 12} Q${(POLE.x + POLES[1]) / 2} ${POLE.top + 48} ${POLES[1] + 4} ${POLE.top + 24} Q960 ${POLE.top + 52} 1020 ${POLE.top + 34}`}
           stroke="#3d3a3a"
@@ -350,6 +344,14 @@ export function TitleLandscape({
 
         {/* 田んぼ・道に、時間帯・天気の色をかける */}
         <rect x="0" y={Y.paddyTop} width="1000" height={900 - Y.paddyTop} fill={shade} />
+
+        {/* 電柱（路肩に立つ）。街灯の柱と同じ、木の色の単色。地面の色かけより手前に描いて、色がまだらにならないようにする */}
+        {POLES.map((x) => (
+          <g key={x}>
+            <rect x={x} y={POLE.top + 10} width="8" height={BASE - POLE.top - 10} fill={wood} />
+            <rect x={x - 12} y={POLE.top + 22} width="32" height="4" fill={wood} />
+          </g>
+        ))}
 
         {/* 街灯の光 */}
         {lamp && (
@@ -379,7 +381,7 @@ export function TitleLandscape({
         <g>
           <rect x={POLE.x} y={POLE.top} width="9" height={BASE - POLE.top} fill={wood} />
           <rect x={POLE.x - 12} y={POLE.top + 10} width="33" height="4" fill={wood} />
-          <path d={`M${POLE.x + 2} ${POLE.top + 20} L${LAMP.x + 2} ${LAMP.y - 10} L${LAMP.x + 2} ${LAMP.y - 6} L${POLE.x + 2} ${POLE.top + 25} Z`} fill="#4b4141" />
+          <path d={`M${POLE.x + 2} ${POLE.top + 20} L${LAMP.x + 2} ${LAMP.y - 10} L${LAMP.x + 2} ${LAMP.y - 6} L${POLE.x + 2} ${POLE.top + 25} Z`} fill={wood} />
           <path d={`M${LAMP.x - 16} ${LAMP.y - 8}h32l-7 10h-18z`} fill="#4b4141" />
           <ellipse cx={LAMP.x} cy={LAMP.y + 2} rx="8" ry="4" fill={lamp ? '#fff3c4' : '#c9c6bd'} />
           {snowy && <rect x={POLE.x - 1} y={POLE.top - 3} width="11" height="5" rx="2" fill="#f6f8fa" />}
