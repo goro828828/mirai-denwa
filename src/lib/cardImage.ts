@@ -166,8 +166,8 @@ export async function renderCardPng(r: CallRecord): Promise<Blob> {
   ctx.fillText('未来の自分から、着信です。', left, cy + 140)
 
   ctx.fillStyle = C.sub
-  ctx.font = `400 34px ${FONT}`
-  ctx.fillText(`${formatDateTime(r.createdAt)} 通話`, left, cy + 200)
+  ctx.font = `400 40px ${FONT}`
+  ctx.fillText(`${formatDateTime(r.createdAt)} 通話`, left, cy + 206)
 
   // 項目
   const fields: [string, string][] = [
@@ -178,12 +178,12 @@ export async function renderCardPng(r: CallRecord): Promise<Blob> {
   let fy = cy + 290
   for (const [k, val] of fields) {
     ctx.fillStyle = C.sub
-    ctx.font = `500 30px ${FONT}`
+    ctx.font = `500 36px ${FONT}`
     ctx.fillText(k, left, fy)
     ctx.fillStyle = C.ink
-    ctx.font = `500 40px ${FONT}`
-    ctx.fillText(val, left + 150, fy)
-    fy += 62
+    ctx.font = `500 46px ${FONT}`
+    ctx.fillText(val, left + 170, fy)
+    fy += 68
   }
 
   // 区切り線
@@ -197,21 +197,22 @@ export async function renderCardPng(r: CallRecord): Promise<Blob> {
   ctx.setLineDash([])
 
   ctx.fillStyle = C.accent
-  ctx.font = `500 30px ${FONT}`
-  ctx.fillText(`${yearsLabel(r.years ?? 10)}の ${r.nickname} より`, left, fy + 52)
+  ctx.font = `500 40px ${FONT}`
+  ctx.fillText(`${yearsLabel(r.years ?? 10)}の ${r.nickname} より`, left, fy + 56)
 
-  // メッセージ（長さに応じて文字サイズを調整）
-  const msgTop = fy + 120
-  const msgBottom = cy + ch - 120
-  let size = 46
+  // メッセージ（長さに応じて文字サイズを調整。大きめから始めて、収まる大きさにする）
+  const msgTop = fy + 150
+  const msgBottom = cy + ch - 100
+  const LH = 1.55
+  let size = 68
   let lines: string[] = []
-  for (; size >= 30; size -= 2) {
+  for (; size >= 40; size -= 2) {
     ctx.font = `500 ${size}px ${FONT}`
     lines = wrapJa(ctx, r.finalMessage, right - left)
-    if (lines.length * size * 1.7 <= msgBottom - msgTop) break
+    if ((lines.length - 1) * size * LH + size <= msgBottom - msgTop) break
   }
   ctx.fillStyle = C.ink
-  lines.forEach((l, i) => ctx.fillText(l, left, msgTop + i * size * 1.7))
+  lines.forEach((l, i) => ctx.fillText(l, left, msgTop + i * size * LH))
 
   // 挿絵（右上）
   const illust = await loadIllustration(illustrationOf(r))

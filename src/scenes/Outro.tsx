@@ -35,10 +35,11 @@ function useCardUrl(record: CallRecord | null) {
 }
 
 const SAVE_LABEL = { photos: '写真に保存', gallery: '写真に保存', download: 'カードを画像で保存' } as const
+// 保存後のひとこと（iPhone は保存メニューで本人が選ぶので、何も出さない）
 const SAVED_MSG = {
-  photos: '開いたメニューで「画像を保存」を選んでいれば、写真アプリに入っています。',
-  gallery: '保存しました。写真（ギャラリー）アプリの「Download」フォルダに入っています。',
-  download: '画像を保存しました。見つからない場合は、上のカード画像を長押しして保存できます。',
+  photos: '',
+  gallery: '写真に保存しました。',
+  download: '画像を保存しました。',
 } as const
 
 function CardActions({ record, blob }: { record: CallRecord; blob: Blob | null }) {
@@ -67,7 +68,6 @@ function CardActions({ record, blob }: { record: CallRecord; blob: Blob | null }
       })}>
         {SAVE_LABEL[mode]}
       </button>
-      {mode === 'photos' && <p className="note">開いたメニューで「画像を保存」を選ぶと、写真アプリに保存されます。</p>}
       {shareFiles ? (
         <button type="button" className="btn ghost" disabled={busy} onClick={() => run(async () => {
           const r = await shareCard(record)

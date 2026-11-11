@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import type { CallRecord, Gender, LifeStage } from '../types'
 import { findPref } from '../data/prefectures'
 import { formatDateTime, weatherText } from '../lib/format'
@@ -119,6 +120,18 @@ interface PrintedProps {
   printedChars?: number
 }
 
+/**
+ * 最後のメッセージの文字の大きさ（カード幅に対する%）と、行数の目安
+ * 長いメッセージほど少し小さくして、カードに収める
+ */
+export function msgSize(text: string): { size: number; lines: number } {
+  const n = [...text].length
+  if (n <= 44) return { size: 3.9, lines: 3 }
+  if (n <= 62) return { size: 3.6, lines: 4 }
+  if (n <= 80) return { size: 3.3, lines: 4 }
+  return { size: 3.0, lines: 5 }
+}
+
 export function CardPrinted({ record, printedChars }: PrintedProps) {
   const msg = printedChars === undefined ? record.finalMessage : record.finalMessage.slice(0, printedChars)
   const pref = findPref(record.prefCode)?.name ?? record.prefName
@@ -144,7 +157,11 @@ export function CardPrinted({ record, printedChars }: PrintedProps) {
           <dd>{weatherText(record.weather)}</dd>
         </dl>
         <p className="pc-printed-from">{yearsLabel(record.years ?? 10)}の {record.nickname} より</p>
-        <p className="pc-printed-msg" aria-label={record.finalMessage}>
+        <p
+          className="pc-printed-msg"
+          aria-label={record.finalMessage}
+          style={{ '--msg-size': `${msgSize(record.finalMessage).size}cqw`, '--msg-lines': msgSize(record.finalMessage).lines } as CSSProperties}
+        >
           <span aria-hidden="true">{msg}</span>
         </p>
       </div>

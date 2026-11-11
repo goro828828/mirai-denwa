@@ -385,7 +385,7 @@ p {
 }
 .pc-printed-body {
   position: relative;
-  padding-top: 4cqw;
+  padding-top: 3.4cqw;
   display: flex;
   flex-direction: column;
 }
@@ -394,15 +394,15 @@ p {
   font-weight: 700;
 }
 .pc-printed-date {
-  font-size: 2.1cqw;
+  font-size: 2.5cqw;
   color: var(--sub);
 }
 .pc-printed-fields {
   display: grid;
-  grid-template-columns: 8cqw 1fr;
-  margin: 1.6cqw 0 1.2cqw;
-  font-size: 2.4cqw;
-  line-height: 1.6;
+  grid-template-columns: 9cqw 1fr;
+  margin: 1.2cqw 0 1.2cqw;
+  font-size: 2.8cqw;
+  line-height: 1.5;
   padding-bottom: 1.2cqw;
   border-bottom: 0.25cqw dashed var(--line);
 }
@@ -417,15 +417,17 @@ p {
   text-overflow: ellipsis;
 }
 .pc-printed-from {
-  font-size: 2.1cqw;
+  font-size: 2.6cqw;
   color: var(--accent);
   font-weight: 500;
 }
+/* 最後のメッセージ：長さに合わせて大きさを変える（--msg-size。PhoneCard.tsx の msgSize） */
 .pc-printed-msg {
-  font-size: 2.75cqw;
-  line-height: 1.65;
+  font-size: var(--msg-size, 3.6cqw);
+  line-height: 1.55;
   font-weight: 500;
-  min-height: 9em;
+  /* 印字中に高さが変わらないよう、最初から最後の行数ぶんの高さをとる */
+  min-height: calc(var(--msg-lines, 4) * 1.55em);
 }
 
 /* ---------- 拾う ---------- */
