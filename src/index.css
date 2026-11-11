@@ -27,6 +27,12 @@ body {
   margin: 0;
   background: #efe6d6;
 }
+/* スマホのブラウザが、文章の量によって文字を勝手に大きくしないようにする
+   （画面ごとに同じ説明文の大きさが変わってしまうため） */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 body {
   font-family: var(--font);
   color: var(--ink);
