@@ -9,7 +9,7 @@
  * 台詞は共通語で書き、地域で変わる部分だけ {だよ} {だね} {だから} {から} {でしょ}
  * {すごく} {いい} {てる} {てた} {よ} {ね} と書く（data/dialects.ts で県ごとに置き換える）。
  */
-import type { CallContext } from './engine'
+import { closenessOf, type CallContext } from './engine'
 
 export type Text = string | ((c: CallContext) => string)
 export interface Variant {
@@ -23,3 +23,17 @@ export interface Variant {
 }
 
 export const t = (young: Text, middle?: Text, elder?: Text, past?: Text, century?: Text): Variant => ({ young, middle, elder, past, century })
+
+/**
+ * あなた（受け手）側の選択肢：通話を重ねるほど、くだけた言い方になる
+ * me(1回目, 2回目, 3〜5回目, 6回目〜)。省略した段階は、ひとつ前の段階の言い方を使う。
+ */
+export const me =
+  (...levels: [string, ...(string | undefined)[]]): Text =>
+  (c: CallContext) => {
+    for (let i = closenessOf(c.callIndex); i >= 0; i--) {
+      const v = levels[i]
+      if (v) return v
+    }
+    return levels[0]
+  }

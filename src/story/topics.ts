@@ -6,14 +6,14 @@
  * t(10年後, 20〜30年後, 40〜60年後, 10年前, 100年後)。100年後は省略時、40〜60年後の台詞を使う。
  */
 import type { CallContext } from './engine'
-import { t, type Variant } from './text'
+import { me, t, type Text, type Variant } from './text'
 
 export interface Topic {
   /** 通話履歴に残す質問 */
   question: string
   ask: Variant
   /** 「あるよ」以外の2つの選択肢 */
-  others: { label: string; value: string; reply: Variant[] }[]
+  others: { label: Text; value: string; reply: Variant[] }[]
   input: { prompt: string; placeholder: string; question: string }
   inputReply: (value: string) => Variant[]
   /** 自由入力のあとの振り返り（「確かにそうだった気がする」） */
@@ -29,7 +29,7 @@ export const TOPICS: Record<string, Topic> = {
     ask: t('最近、「おいしい」って思ったもの、ある？', undefined, '最近、おいしいと思ったものは、あるかい。'),
     others: [
       {
-        label: '思い出せないかも',
+        label: me('思い出せないかも', undefined, 'うーん、思い出せない', 'えー、なんだっけ'),
         value: 'forget',
         reply: [
           t(
@@ -41,7 +41,7 @@ export const TOPICS: Record<string, Topic> = {
         ],
       },
       {
-        label: '最近、ちゃんと食べてないかも',
+        label: me('最近、ちゃんと食べてないかも', undefined, 'ちゃんと食べてないかも', '正直、適当に済ませてる'),
         value: 'rushed',
         reply: [t('温かいもの、ひとつでいい{から}{ね}。', undefined, '温かいものを、ひとつでいい{から}食べて{ね}。', 'ちゃんと食べて{ね}。……自分のことだと、心配になる。')],
       },
@@ -57,12 +57,12 @@ export const TOPICS: Record<string, Topic> = {
     ask: t('最近、声を出して笑ったこと、ある？', undefined, '最近、声を出して笑ったことは、あるかい。'),
     others: [
       {
-        label: '思い出せないかも',
+        label: me('思い出せないかも', undefined, 'うーん、思い出せない', 'えー、なんだっけ'),
         value: 'forget',
         reply: [t('何で笑ったかは忘れても、笑ってたことは、あとで懐かしくなる{よ}。', undefined, '笑っていた顔は、不思議と覚え{てる}もん{だよ}。', 'そっか。……でも、笑えてるなら、よかった。')],
       },
       {
-        label: '最近、あんまり笑ってないかも',
+        label: me('最近、あんまり笑ってないかも', undefined, 'あんまり笑ってないかも', '最近、笑ってないなあ'),
         value: 'rushed',
         reply: [t('そういう時期もある{よ}。小さく笑えたら、それだけ覚えておいて。', undefined, '無理に笑わなくていいん{だよ}。', 'そっか……。こっちで笑ってる分、少し分けてあげたい{よ}。')],
       },
@@ -78,12 +78,12 @@ export const TOPICS: Record<string, Topic> = {
     ask: t('最近、きれいだなって思った景色、ある？', undefined, '最近、きれいだと思った景色は、あるかい。'),
     others: [
       {
-        label: '思い出せないかも',
+        label: me('思い出せないかも', undefined, 'うーん、思い出せない', 'えー、なんだっけ'),
         value: 'forget',
         reply: [t('今日の帰り道、少しだけ顔を上げてみて。', undefined, '毎日見てる景色ほど、あとで懐かしいん{だよ}。', '今度空を見たら、思い出して{ね}。10年前の自分と話したこと。')],
       },
       {
-        label: '最近、あんまり外を見てないかも',
+        label: me('最近、あんまり外を見てないかも', undefined, 'あんまり外を見てないかも', '最近、下ばっかり見てたかも'),
         value: 'rushed',
         reply: [t('窓の外でもいい{から}、ひと目だけ見てみて。', undefined, '空の色は、毎日ちがう{よ}。ひと目、見てごらん。', '窓の外、ひと目だけ見てみて。……こっちも、今見てる{から}。')],
       },
@@ -98,12 +98,12 @@ export const TOPICS: Record<string, Topic> = {
     ask: t('最近、よく聴いてる音楽ってある？', undefined, '最近、よく聴いている音楽は、あるかい。'),
     others: [
       {
-        label: 'とくに決まってないかも',
+        label: me('とくに決まってないかも', undefined, 'とくに決まってない', 'その日の気分かな'),
         value: 'forget',
         reply: [t('ふと流れた曲で、この頃を思い出したりする{よ}。', undefined, '流れていた曲が、その頃の空気ごと連れてくるん{だよ}。', 'そっか。……こっちが今聴いてる曲、そっちでは懐かしいのかな。')],
       },
       {
-        label: '最近、あんまり聴いてないかも',
+        label: me('最近、あんまり聴いてないかも', undefined, 'あんまり聴いてないかも', '最近、聴いてないなあ'),
         value: 'rushed',
         reply: [t('今聞こえてる音も、いつか懐かしい音になる{よ}。', undefined, '静かなのも、{いい}もん{だよ}。', 'そっか。……静かな時間も、{いい}{ね}。')],
       },
@@ -119,12 +119,12 @@ export const TOPICS: Record<string, Topic> = {
     ask: t('最近、よく行く場所ってある？', undefined, '最近、よく行く場所は、あるかい。'),
     others: [
       {
-        label: 'とくにないかも',
+        label: me('とくにないかも', undefined, 'とくにない', 'とくにないなあ'),
         value: 'forget',
         reply: [t('いつもの道こそ、あとで一番懐かしくなる{よ}。', undefined, 'いつも通る道ほど、年をとってから懐かしいん{だよ}。', 'そっか。……いつもの道、10年後も歩いてる？')],
       },
       {
-        label: '最近、家にいることが多いかも',
+        label: me('最近、家にいることが多いかも', undefined, '家にいることが多いかも', 'ほぼ家にいる'),
         value: 'rushed',
         reply: [t('窓からの景色も、家の音も、ちゃんと懐かしくなる{よ}。', undefined, '家で過ごす時間も、{いい}もん{だよ}。', '家の時間も、大事{だね}。')],
       },
@@ -140,12 +140,12 @@ export const TOPICS: Record<string, Topic> = {
     ask: t('最近、夢中になってること、ある？', undefined, '最近、夢中になっていることは、あるかい。'),
     others: [
       {
-        label: '探している途中',
+        label: me('探している途中', '探してる途中', undefined, 'まだ探し中'),
         value: 'forget',
         reply: [t('探してる時間も、あとで懐かしい{よ}。急がなくて大丈夫。', undefined, '迷っていた頃が、いちばん懐かしいもん{だよ}。', '探してる途中か。……こっちも、まだ探してる{よ}。')],
       },
       {
-        label: '特にないかな',
+        label: me('特にないかな', undefined, undefined, '特にないなあ'),
         value: 'rushed',
         reply: [t('何もない時期も、あとで思えば静かで{いい}時間{だよ}。', undefined, 'それでいいん{だよ}。穏やかな時間も、大事{だよ}。', 'そっか。……それでも、毎日ちゃんと過ごしてるん{だね}。')],
       },

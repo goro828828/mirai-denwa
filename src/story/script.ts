@@ -21,12 +21,12 @@
  * ※ 会話の全文と分岐数は仕様上「未確定」。差し替え前提の稿。
  */
 import type { CallContext } from './engine'
-import { t, type Text, type Variant } from './text'
+import { me, t, type Text, type Variant } from './text'
 import { TOPICS, TOPIC_NOUN } from './topics'
 import { finalMessage } from './finals'
 
 export type { Text, Variant } from './text'
-export { t } from './text'
+export { me, t } from './text'
 export { finalMessage, feelingCategory } from './finals'
 export { recallFor, RECALL_CHANCE } from './recall'
 
@@ -167,12 +167,12 @@ export const NODES: Record<string, StoryNode> = {
     say: () => [t('もしもし。', undefined, 'もしもし。……')],
     choices: (c) => [
       {
-        label: '……もしもし。いつもの？',
+        label: me('……もしもし。いつもの？', undefined, '……もしもし。いつもの？', 'もしもーし。いつもの？'),
         value: 'usual',
         reply: [t('うん、いつもの{だよ}。', 'ふふ、うん。いつもの{だよ}。', 'ああ、いつもの{だよ}。')],
       },
       {
-        label: '今日は、何年後？',
+        label: me('今日は、何年後？', undefined, '今日は、何年後？', '今日は何年後から？'),
         value: 'years',
         reply: [
           t(
@@ -195,8 +195,8 @@ export const NODES: Record<string, StoryNode> = {
       t('あの電話も、こっちからは、もう懐かしい。', undefined, 'あの電話も、今では遠い思い出{だよ}。'),
     ],
     choices: () => [
-      { label: 'もう、そんなに？', value: 'already', reply: [t('うん。こういう時間が、あとで一番懐かしくなる{よ}。', undefined, 'そう{だよ}。重ねた時間は、ちゃんと残るもん{だよ}。')] },
-      { label: '覚えててくれたんだ', value: 'remember', reply: [t('もちろん。自分のこと{だから}{ね}。', undefined, '忘れない{よ}。自分のこと{だから}{ね}。')] },
+      { label: me('もう、そんなに？', undefined, 'もう、そんなに？', 'もうそんなに話してたっけ'), value: 'already', reply: [t('うん。こういう時間が、あとで一番懐かしくなる{よ}。', undefined, 'そう{だよ}。重ねた時間は、ちゃんと残るもん{だよ}。')] },
+      { label: me('覚えててくれたんだ', undefined, '覚えててくれたんだ', 'さすが、覚えてるね'), value: 'remember', reply: [t('もちろん。自分のこと{だから}{ね}。', undefined, '忘れない{よ}。自分のこと{だから}{ね}。')] },
     ],
     next: 'sky',
   },
@@ -208,12 +208,12 @@ export const NODES: Record<string, StoryNode> = {
     say: () => [t('もしもし？')],
     choices: () => [
       {
-        label: '……もしもし？',
+        label: me('……もしもし？', undefined, undefined, 'もしもし？ ……あれ、いつもの声と違う？'),
         value: 'hello',
         reply: [t('あ、つながった。よかった。', '……ああ、つながった。よかった。', '……ああ、つながった{ね}。よかった。', 'あ……本当に、つながった。', '……ああ、届いた{ね}。')],
       },
       {
-        label: 'どなたですか？',
+        label: me('どなたですか？', undefined, undefined, 'あれ、今日はだれ？'),
         value: 'who',
         reply: [t('あ、急にごめん{ね}。', 'ああ、急にごめん{ね}。', 'ああ、急にごめんなさい{ね}。', 'あ、ごめん。びっくりさせちゃった{ね}。', 'ああ、驚かせてしまった{ね}。')],
       },
@@ -234,9 +234,9 @@ export const NODES: Record<string, StoryNode> = {
       ),
     ],
     choices: (c) => [
-      { label: 'え、本当に？', value: 'really', reply: WHY(c) },
+      { label: me('え、本当に？', undefined, undefined, 'え、そっちから来たの？'), value: 'really', reply: WHY(c) },
       {
-        label: 'いたずら電話？',
+        label: me('いたずら電話？', undefined, undefined, 'まさか、いたずら？'),
         value: 'prank',
         reply: [t('ふふ、そう思うよ{ね}。', undefined, 'ふふ、そう思うだろう{ね}。', 'いたずらじゃない{よ}。ちゃんと、10年前の自分。'), ...WHY(c).slice(1)],
       },
@@ -267,7 +267,7 @@ export const NODES: Record<string, StoryNode> = {
     say: () => [t('今日って、どんな一日だった？', undefined, '今日は、どんな一日だったかい。', 'ねえ、今日はどんな一日だった？')],
     choices: () => [
       {
-        label: 'いつも通りの、普通の日',
+        label: me('いつも通りの、普通の日', 'いつも通りの、普通の日だったよ', 'いつも通り、普通の日', 'いつも通り。ふつーの日'),
         value: 'ordinary',
         reply: [
           t(
@@ -279,17 +279,17 @@ export const NODES: Record<string, StoryNode> = {
         ],
       },
       {
-        label: 'ちょっと忙しかった',
+        label: me('ちょっと忙しかった', 'ちょっと忙しかったかな', 'わりと忙しかった', 'もう、バタバタだった'),
         value: 'busy',
         reply: [t('おつかれさま。必死だった日って、あとで愛おしくなる{よ}。', undefined, 'おつかれさま。忙しかった日も、今は愛おしい{よ}。', 'そっか。……がんばってるん{だね}、未来の自分。')],
       },
       {
-        label: 'あんまりいい日じゃなかった',
+        label: me('あんまりいい日じゃなかった', 'あんまりいい日じゃなかったかも', 'あんまりよくなかった', 'うーん、微妙な日だった'),
         value: 'bad',
         reply: [t('そっか。無理に明るくしなくていい{から}{ね}。', undefined, 'そうかい。今日は、ゆっくりおやすみ。', 'そっか……。それでも、電話に出てくれてうれしい{よ}。')],
       },
       {
-        label: 'けっこういい日だった',
+        label: me('けっこういい日だった', 'けっこういい日だったよ', 'けっこういい日！', 'いい日だった。聞いてよ'),
         value: 'good',
         reply: [t('{いい}{ね}。声がちょっと明るい。', undefined, 'それはよかった。声が弾んでる{ね}。', 'よかった。……10年後にも、いい日があるんだ{ね}。')],
       },
@@ -303,7 +303,7 @@ export const NODES: Record<string, StoryNode> = {
     question: (c) => TOPICS[c.topic].question,
     answerKey: 'topicYN',
     say: (c) => [TOPICS[c.topic].ask],
-    choices: (c) => [{ label: 'あるよ', value: 'yes', next: 'topicInput' }, ...TOPICS[c.topic].others],
+    choices: (c) => [{ label: me('あるよ', undefined, 'あるある', 'あるよ、聞いて'), value: 'yes', next: 'topicInput' }, ...TOPICS[c.topic].others],
     next: afterTopic,
   },
 
@@ -322,22 +322,22 @@ export const NODES: Record<string, StoryNode> = {
     say: () => [t('最近、よく話す人っている？', undefined, '最近、よく話す人は、いるかい。', '最近、よく話す人っている？')],
     choices: (c) => [
       {
-        label: '家族',
+        label: me('家族', '家族かな', undefined, 'やっぱり家族'),
         value: 'family',
         reply: [t('家族か。何気ない会話ほど、あとで懐かしくなる{よ}。', undefined, '家族とのなんでもない話は、あとでありがたく思うもん{だよ}。', '家族か。……こっちも今日、少し話してみようかな。')],
       },
       {
-        label: '友だち',
+        label: me('友だち', '友だちかな', '友だち', '友だちだね'),
         value: 'friend',
         reply: [t('{いい}{ね}。どうでもいい話ができる時間って、宝物{だよ}。', undefined, '他愛もない話ができる相手がいるのは、幸せなこと{だよ}。', '友だちか。{いい}{ね}。……なんだか、ほっとした。')],
       },
       {
-        label: c.lifestage === 'student' ? '学校の人' : c.lifestage === 'worker' ? '職場の人' : 'まわりの人',
+        label: ((p) => me(p, `${p}かな`, p, `${p}たちかな`))(c.lifestage === 'student' ? '学校の人' : c.lifestage === 'worker' ? '職場の人' : 'まわりの人'),
         value: 'peer',
         reply: [t('毎日会う「いつもの顔」って、あとで懐かしくなる{よ}。', undefined, '毎日顔を合わせる人のことは、ふと思い出すもん{だよ}。', '毎日会う人がいるんだ{ね}。……どんな人なんだろう。')],
       },
       {
-        label: 'ひとりの時間が多いかな',
+        label: me('ひとりの時間が多いかな', undefined, 'ひとりが多いかな', 'ほぼ、ひとりかな'),
         value: 'alone',
         reply: [t(`ひとりの時間も、ちゃんと${c.name}の時間{だよ}。`, undefined, 'ひとりで考えていたことも、あとで大事な思い出になる{よ}。', `ひとりの時間か。……ひとりでも、ちゃんと${c.name}{だよ}。`)],
       },
@@ -351,11 +351,11 @@ export const NODES: Record<string, StoryNode> = {
     answerKey: 'mood',
     say: () => [t('今日の気持ち、ひとことで言うなら？', undefined, '今日の気持ちを、ひとことで言うと？', '今日の気持ち、ひとことで言うなら？')],
     choices: () => [
-      { label: 'おだやか', value: 'calm', reply: [t('おだやか、か。{いい}{ね}。', undefined, 'それは何より{だよ}。', 'おだやか、か。……未来の自分がそう言ってくれて、うれしい。')] },
-      { label: 'ちょっと疲れた', value: 'tired', reply: [t('疲れたって言えるの、大事{だよ}。', undefined, '疲れた日は、早めに休むん{だよ}。', 'そっか。……無理しないで{ね}。')] },
-      { label: 'なんとなく不安', value: 'anxious', reply: [t('そっか。不安な夜って、長く感じるよ{ね}。', undefined, 'そうかい。そういう夜も、ある{よ}。', 'そっか。……こっちも、不安な日はある{よ}。同じ{だね}。')] },
-      { label: 'わくわくしてる', value: 'excited', reply: [t('{いい}{ね}。電話越しでも伝わってくる。', undefined, 'それは{いい}{ね}。こっちまで若返る{よ}。', 'わくわくしてるんだ。……こっちまで、うれしい。')] },
-      { label: 'よくわからない', value: 'unsure', reply: [t('ひとことじゃ言えないこと、多いよ{ね}。', undefined, 'それでいいん{だよ}。', 'うん。……こっちも、よくわからない日ばっかり{だよ}。')] },
+      { label: me('おだやか', 'おだやか、かな', 'おだやか', 'まったり'), value: 'calm', reply: [t('おだやか、か。{いい}{ね}。', undefined, 'それは何より{だよ}。', 'おだやか、か。……未来の自分がそう言ってくれて、うれしい。')] },
+      { label: me('ちょっと疲れた', 'ちょっと疲れたかな', '疲れた', 'もうクタクタ'), value: 'tired', reply: [t('疲れたって言えるの、大事{だよ}。', undefined, '疲れた日は、早めに休むん{だよ}。', 'そっか。……無理しないで{ね}。')] },
+      { label: me('なんとなく不安', 'なんとなく不安かな', 'なんか不安', 'なんか、そわそわする'), value: 'anxious', reply: [t('そっか。不安な夜って、長く感じるよ{ね}。', undefined, 'そうかい。そういう夜も、ある{よ}。', 'そっか。……こっちも、不安な日はある{よ}。同じ{だね}。')] },
+      { label: me('わくわくしてる', 'わくわくしてるかも', 'わくわく', 'わくわくしてる！'), value: 'excited', reply: [t('{いい}{ね}。電話越しでも伝わってくる。', undefined, 'それは{いい}{ね}。こっちまで若返る{よ}。', 'わくわくしてるんだ。……こっちまで、うれしい。')] },
+      { label: me('よくわからない', 'よくわからないかな', 'よくわかんない', 'わかんないや'), value: 'unsure', reply: [t('ひとことじゃ言えないこと、多いよ{ね}。', undefined, 'それでいいん{だよ}。', 'うん。……こっちも、よくわからない日ばっかり{だよ}。')] },
     ],
     next: 'feeling',
   },
@@ -411,7 +411,7 @@ export const NODES: Record<string, StoryNode> = {
     ],
     choices: (c) => [
       {
-        label: '……ちょっと、懐かしい気がした',
+        label: me('……ちょっと、懐かしい気がした', undefined, 'なんか、懐かしかった', 'あ、これ懐かしいやつだ'),
         value: 'felt',
         reply: [
           t(
@@ -424,7 +424,7 @@ export const NODES: Record<string, StoryNode> = {
         ],
       },
       {
-        label: 'なんか、胸がぎゅっとした',
+        label: me('なんか、胸がぎゅっとした', undefined, '胸がぎゅっとした', 'ちょっと、きゅっとなった'),
         value: 'ache',
         reply: [
           t(
@@ -437,7 +437,7 @@ export const NODES: Record<string, StoryNode> = {
         ],
       },
       {
-        label: 'よくわからなかった',
+        label: me('よくわからなかった', 'よくわからなかったかも', 'よくわかんなかった', 'うーん、まだわかんない'),
         value: 'notyet',
         reply: [
           t(
@@ -499,8 +499,8 @@ export const NODES: Record<string, StoryNode> = {
       ),
     ],
     choices: () => [
-      { label: 'ありがとう', value: 'thanks', reply: [t('こちらこそ。', undefined, 'こちらこそ、ありがとう{ね}。', 'こっちこそ。……ありがとう。')] },
-      { label: 'またね', value: 'bye', reply: [t('うん。また、いつか。', undefined, undefined, 'うん。……また、いつか。')] },
+      { label: me('ありがとう', undefined, 'ありがと', 'いつもありがとね'), value: 'thanks', reply: [t('こちらこそ。', undefined, 'こちらこそ、ありがとう{ね}。', 'こっちこそ。……ありがとう。')] },
+      { label: me('またね', undefined, 'またね！', 'じゃ、またね'), value: 'bye', reply: [t('うん。また、いつか。', undefined, undefined, 'うん。……また、いつか。')] },
       { label: '（受話器を置く）', value: 'hangup' },
     ],
     next: 'end',

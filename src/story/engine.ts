@@ -58,6 +58,22 @@ export function scriptFor(callIndex: number, years: number): ScriptKind {
   return callIndex === 2 ? 'second' : 'regular'
 }
 
+/**
+ * あなた（受け手）側の、打ち解け度合い
+ * 通話を重ねるほど、選択肢の言葉がくだけていく。
+ * - 0：1回目（まだぎこちない。ていねい）
+ * - 1：2回目（少しやわらかい）
+ * - 2：3〜5回目（くだけてくる）
+ * - 3：6回目〜（すっかりフランク。友だちと話すような調子）
+ */
+export type Closeness = 0 | 1 | 2 | 3
+export function closenessOf(callIndex: number): Closeness {
+  if (callIndex <= 1) return 0
+  if (callIndex === 2) return 1
+  if (callIndex <= 5) return 2
+  return 3
+}
+
 /** 前回の通話（2回目以降の会話で触れる） */
 export interface PrevCall {
   /** 前回から何時間たったか */
