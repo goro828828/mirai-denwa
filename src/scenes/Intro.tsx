@@ -100,7 +100,7 @@ export function PickupScene({
   useEffect(() => {
     if (!onWarp || stage !== 'front') return
     const a = window.setTimeout(() => setWarping(true), 2400)
-    const b = window.setTimeout(onWarp, 2400 + (reduced ? 300 : 800))
+    const b = window.setTimeout(onWarp, 2400 + (reduced ? 300 : 1600))
     return () => {
       window.clearTimeout(a)
       window.clearTimeout(b)
