@@ -272,6 +272,8 @@ p {
 }
 .pc-band-text {
   writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-feature-settings: "vert" 1;
   font-size: 2.3cqw;
   font-weight: 500;
   letter-spacing: 0.25em;

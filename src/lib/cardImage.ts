@@ -119,7 +119,20 @@ export async function renderCardPng(r: CallRecord): Promise<Blob> {
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   const vertical = '未来行きテレフォンカード'
-  ;[...vertical].forEach((c, i) => ctx.fillText(c, cx + bandW / 2, cy + 120 + i * 62))
+  ;[...vertical].forEach((c, i) => {
+    const x = cx + bandW / 2
+    const y = cy + 120 + i * 62
+    // 縦書きの伸ばし棒（ー）は、90度回して縦にする
+    if (c === 'ー') {
+      ctx.save()
+      ctx.translate(x, y)
+      ctx.rotate(Math.PI / 2)
+      ctx.fillText(c, 0, 0)
+      ctx.restore()
+    } else {
+      ctx.fillText(c, x, y)
+    }
+  })
   ctx.font = `700 64px ${FONT}`
   ctx.fillText(String(TOTAL_UNITS), cx + bandW / 2, cy + ch - 110)
   ctx.font = `400 26px ${FONT}`
