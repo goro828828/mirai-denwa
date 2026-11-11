@@ -87,7 +87,7 @@ export function PhoneScene({
     onConnected()
   }
 
-  const slot: SlotState = stage === 'idle' || stage === 'lifted' ? 'empty' : 'inside'
+  const slot: SlotState = stage === 'idle' || stage === 'lifted' ? 'empty' : stage === 'inserting' ? 'inserting' : 'inside'
 
   let guide = '受話器をタップして、あげてください。'
   if (stage === 'lifted') guide = 'カードを上にスワイプするか、タップして差し込んでください。'
@@ -100,11 +100,12 @@ export function PhoneScene({
       <p className="weather-note">
         {weather === undefined && `${pref?.name ?? ''}の天気を確認しています…`}
         {weather === null && '天気を取得できませんでした。よかったら、いまの空を教えてください。'}
-        {weather && !weather.manual &&
+        {weather && !weather.manual && weather.source !== 'here' &&
           (weather.source === 'jma'
             ? `${pref?.name}${weather.station === pref?.name ? '' : `（${weather.station}）`}の今日の天気：${weather.label}（気象庁の予報）`
             : `${pref?.name}（代表地点：${weather.station}）は いま${weather.label}`)}
         {weather?.manual && `いまの空：${weather.label}`}
+        {weather?.source === 'here' && `現在地の天気：${weather.label}`}
       </p>
       {weather === null && (
         <div className="sky-pick" role="group" aria-label="いまの空を選ぶ（任意）">

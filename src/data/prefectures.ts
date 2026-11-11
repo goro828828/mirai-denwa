@@ -1,5 +1,3 @@
-import type { Dialect } from '../types'
-
 export interface Prefecture {
   code: string
   name: string
@@ -73,21 +71,4 @@ export const REGIONS = [...new Set(PREFECTURES.map((p) => p.region))]
 
 export function findPref(code: string): Prefecture | undefined {
   return PREFECTURES.find((p) => p.code === code)
-}
-
-/**
- * 方言の初期分類（制作上の簡略化。実際の方言分布を正確に再現するものではない）
- * - 関西（2府4県）：関西弁
- * - 九州（沖縄を除く7県）：博多弁を参考にした話し方
- * - その他：標準語
- */
-const KANSAI = new Set(['滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県'])
-const KYUSHU = new Set(['福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県'])
-
-export function dialectOf(code: string): Dialect {
-  const p = findPref(code)
-  if (!p) return 'standard'
-  if (KANSAI.has(p.name)) return 'kansai'
-  if (KYUSHU.has(p.name)) return 'hakata'
-  return 'standard'
 }

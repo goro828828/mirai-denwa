@@ -22,7 +22,7 @@ export function TitleScene({ onStart, onHistory, historyCount }: { onStart: () =
         <button type="button" className="btn ghost" onClick={onHistory}>
           通話履歴{historyCount > 0 ? `（${historyCount}）` : ''}
         </button>
-        <p className="note">音が出ます。音なしでも、字幕で最後まで遊べます。</p>
+        <p className="note">音が出ます。音なしでも、字幕で最後まで遊べます。<br />現在地の天気を使うため、位置情報の許可をたずねます（任意・保存しません）。</p>
       </div>
     </section>
   )
@@ -115,7 +115,7 @@ const STEP_TITLE: Record<FormField, string> = {
 const STEP_HELP: Record<FormField, string> = {
   nickname: '未来の自分が、この名前であなたを呼びます。ニックネームで大丈夫です。',
   gender: '最初のひとことの声に使います。答えなくても遊べます。',
-  prefCode: '天気と話し方に使います。気象庁のその県の予報を使います（位置情報は使いません）。',
+  prefCode: '話し方に使います。位置情報を許可していない場合は、天気にも使います。',
   lifestage: '会話の言葉選びに使います。',
 }
 

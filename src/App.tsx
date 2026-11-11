@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CallRecord, Profile, WeatherInfo, WeatherKind } from './types'
 import { findPref } from './data/prefectures'
-import { ambientFor, fetchWeather, isDaytime, timeOfDay } from './lib/weather'
+import { ambientFor, fetchWeather, fetchWeatherAt, isDaytime, timeOfDay } from './lib/weather'
+import { getPosition } from './lib/location'
 import { sound } from './lib/sound'
 import { addHistory, clearHistory, deleteHistory, loadDraft, loadHistory, loadSettings, saveDraft, saveSettings, type Settings } from './lib/storage'
 import { FillScene, PickupScene, TitleScene } from './scenes/Intro'
@@ -38,6 +39,8 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [saveFailed, setSaveFailed] = useState(false)
   const weatherFor = useRef<string | null>(null)
+  /** 現在地の天気（取れたら、都道府県の天気より優先する） */
+  const hereWeather = useRef<WeatherInfo | null>(null)
   const historyBack = useRef<Scene>('title')
   const mainRef = useRef<HTMLElement>(null)
 
@@ -62,8 +65,9 @@ export default function App() {
     setWeather(undefined)
     const pref = findPref(code)
     if (!pref) return setWeather(null)
+    if (hereWeather.current) return setWeather(hereWeather.current)
     void fetchWeather(pref).then((w) => {
-      if (weatherFor.current === code) setWeather(w)
+      if (weatherFor.current === code && !hereWeather.current) setWeather(w)
     })
   }, [])
 
@@ -79,6 +83,17 @@ export default function App() {
     setRecord(null)
     setYears(pickYears())
     setScene('pickup')
+    // 現在地の天気（任意）。許可されなければ、入力した都道府県の天気を使う
+    hereWeather.current = null
+    if (settings.useLocation) {
+      void getPosition().then(async (pos) => {
+        if (!pos) return
+        const w = await fetchWeatherAt(pos.lat, pos.lon)
+        if (!w) return
+        hereWeather.current = w
+        setWeather(w)
+      })
+    }
   }
 
   const onFilled = (p: Profile) => {

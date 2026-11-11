@@ -48,8 +48,10 @@ export interface Settings {
   muted: boolean
   /** null = 端末の設定に従う */
   reduceMotion: boolean | null
+  /** 現在地の天気を使う（位置情報の許可を求める） */
+  useLocation: boolean
 }
-export const DEFAULT_SETTINGS: Settings = { volume: 0.7, muted: false, reduceMotion: null }
+export const DEFAULT_SETTINGS: Settings = { volume: 0.7, muted: false, reduceMotion: null, useLocation: true }
 export function loadSettings(): Settings {
   return { ...DEFAULT_SETTINGS, ...read<Partial<Settings>>(SETTINGS_KEY, {}) }
 }

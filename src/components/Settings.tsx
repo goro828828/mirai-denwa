@@ -56,6 +56,23 @@ export function SettingsDialog({
         </button>
       </div>
 
+      <div className="setting row">
+        <span id="loc-label">
+          現在地の天気を使う
+          <small className="setting-help">位置情報は天気にだけ使い、保存しません</small>
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={settings.useLocation}
+          aria-labelledby="loc-label"
+          className={`switch${settings.useLocation ? ' on' : ''}`}
+          onClick={() => onChange({ ...settings, useLocation: !settings.useLocation })}
+        >
+          <span />
+        </button>
+      </div>
+
       <fieldset className="setting">
         <legend>アニメーション</legend>
         {(

@@ -34,8 +34,11 @@ export function Payphone({ lifted, lcd, slot, activeKey, onHandset, handsetLabel
             {lcd}
           </div>
           <div className="pp-slot-area" aria-hidden="true">
+            {/* 差し込み口の内側の「窓」。カードはこの中だけ見えるので、本体の中から出入りして見える */}
+            <div className="pp-slot-window">
+              <div className="pp-slot-card" />
+            </div>
             <div className="pp-slot" />
-            <div className="pp-slot-card" />
             <span className="pp-slot-label">カード</span>
           </div>
           <div className="pp-keys" aria-hidden="true">

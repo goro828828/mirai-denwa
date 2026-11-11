@@ -1,6 +1,5 @@
 export type Gender = 'male' | 'female' | 'other' | 'none'
 export type LifeStage = 'student' | 'worker' | 'other' | 'none'
-export type Dialect = 'standard' | 'kansai' | 'hakata'
 
 export interface Profile {
   nickname: string
@@ -21,7 +20,7 @@ export interface WeatherInfo {
   /** 天気を取得できず、プレイヤーが自分で選んだ場合 true */
   manual?: boolean
   /** 取得元 */
-  source?: 'jma' | 'open-meteo' | 'manual'
+  source?: 'jma' | 'open-meteo' | 'manual' | 'here'
 }
 
 export interface AnswerLog {

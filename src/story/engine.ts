@@ -1,4 +1,5 @@
-import type { Dialect, LifeStage, WeatherInfo } from '../types'
+import type { LifeStage, WeatherInfo } from '../types'
+import { renderDialect, type DialectProfile } from '../data/dialects'
 import type { Text, Variant } from './text'
 
 /**
@@ -24,7 +25,8 @@ export function pickYears(rand = Math.random): number {
 
 export interface CallContext {
   name: string
-  dialect: Dialect
+  /** その県の話し方（data/dialects.ts） */
+  dialect: DialectProfile
   lifestage: LifeStage
   weather: WeatherInfo | null
   hour: number
@@ -42,14 +44,19 @@ export function resolveText(t: Text, c: CallContext): string {
 }
 
 export function speak(variant: Variant, c: CallContext): string {
-  const t = variant[c.dialect] ?? variant.standard
-  return resolveText(t, c)
+  const text =
+    c.tier === 'elder'
+      ? variant.elder ?? variant.middle ?? variant.young
+      : c.tier === 'middle'
+        ? variant.middle ?? variant.young
+        : variant.young
+  return renderDialect(resolveText(text, c), c.dialect)
 }
 
 /** 自由入力の整形：改行・制御文字を除き、長さを制限する */
 export function cleanInput(raw: string, max: number): string {
   return raw
-    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/[\u0000-\u001f\u007f{}]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, max)

@@ -3,10 +3,19 @@ import { NODES, RECALL_CHANCE, recallFor, type Choice, type InputDef, type Story
 import { cleanInput, resolveText, speak, tierOf, type CallContext } from '../story/engine'
 import { pickTopic } from '../story/topics'
 import type { AnswerLog, Profile, WeatherInfo } from '../types'
-import { dialectOf } from '../data/prefectures'
+import { dialectFor } from '../data/dialects'
 import { sound } from '../lib/sound'
 import { formatDuration } from '../lib/format'
 import { TOTAL_UNITS } from '../lib/cardImage'
+
+/** 度数：1回答えるごとに UNIT_STEP 減り、残りわずかの場面で UNIT_LOW になる */
+const UNIT_STEP = 5
+const UNIT_FLOOR = 6
+const UNIT_LOW = 3
+/** 長押し早送り */
+const TICK = 30
+const FAST_RATE = 6
+const HOLD_DELAY = 180
 
 interface Entry {
   id: number
@@ -56,8 +65,8 @@ export function CallScene({
   const [inputValue, setInputValue] = useState('')
 
   const ctx = useRef<CallContext>({
-    name: profile.nickname,
-    dialect: dialectOf(profile.prefCode),
+    name: profile.nickname.replace(/[{}]/g, ''),
+    dialect: dialectFor(profile.prefCode),
     lifestage: profile.lifestage,
     weather,
     hour: new Date().getHours(),
@@ -72,6 +81,10 @@ export function CallScene({
   const recallCount = useRef(0)
   const idRef = useRef(0)
   const skipRef = useRef<(() => void) | null>(null)
+  const fastRef = useRef(false)
+  const holdTimer = useRef<number | null>(null)
+  const lowShown = useRef(false)
+  const [fast, setFast] = useState(false)
   const alive = useRef(true)
   const started = useRef(false)
   const logEnd = useRef<HTMLDivElement>(null)
@@ -79,17 +92,35 @@ export function CallScene({
 
   const push = (e: Omit<Entry, 'id'>) => setLog((l) => [...l, { ...e, id: ++idRef.current }])
 
-  /** 待ち時間（画面タップで早送りできる） */
+  /** 待ち時間。画面を長押ししている間は、FAST_RATE 倍の速さで進む */
   const wait = (ms: number) =>
     new Promise<void>((resolve) => {
-      const t = window.setTimeout(done, ms)
+      let elapsed = 0
+      const timer = window.setInterval(() => {
+        elapsed += TICK * (fastRef.current ? FAST_RATE : 1)
+        if (elapsed >= ms) done()
+      }, TICK)
       function done() {
-        window.clearTimeout(t)
+        window.clearInterval(timer)
         skipRef.current = null
         resolve()
       }
       skipRef.current = done
     })
+
+  const startHold = () => {
+    if (holdTimer.current) return
+    holdTimer.current = window.setTimeout(() => {
+      fastRef.current = true
+      setFast(true)
+    }, HOLD_DELAY)
+  }
+  const endHold = () => {
+    if (holdTimer.current) window.clearTimeout(holdTimer.current)
+    holdTimer.current = null
+    fastRef.current = false
+    setFast(false)
+  }
 
   const say = async (lines: Variant[], opts: { finalFirst?: boolean; voiced?: boolean } = {}) => {
     for (let i = 0; i < lines.length; i++) {
@@ -120,8 +151,13 @@ export function CallScene({
     await say([line])
   }
 
+  /**
+   * 度数を減らす。残りわずかの演出（3度）より前に下がりきらないよう、それまでは UNIT_FLOOR で止める。
+   * 「残りわずか」以降は減らさない（最後の会話の途中で数字が増えたり戻ったりしないように）。
+   */
   const spend = (n: number) => {
-    unitsRef.current = Math.max(1, unitsRef.current - n)
+    if (lowShown.current) return
+    unitsRef.current = Math.max(UNIT_FLOOR, unitsRef.current - n)
     setUnits(unitsRef.current)
   }
 
@@ -129,6 +165,9 @@ export function CallScene({
     setPending(null)
     sound.busy()
     sound.duck(false)
+    // 受話器を置いたら、最後の度数を使い切る（3 → 1。数字は増えない）
+    unitsRef.current = Math.min(unitsRef.current, 1)
+    setUnits(unitsRef.current)
     push({ who: 'system', text: '― 通話が終わりました ―' })
     setEnded(true)
     await new Promise((r) => window.setTimeout(r, 2200))
@@ -146,8 +185,9 @@ export function CallScene({
     if (node.effect === 'listen') sound.duck(false)
     if (node.effect === 'lowcard') {
       sound.pip()
-      unitsRef.current = 3
-      setUnits(3)
+      lowShown.current = true
+      unitsRef.current = Math.min(unitsRef.current, UNIT_LOW)
+      setUnits(unitsRef.current)
       push({ who: 'system', text: '残り度数が少なくなっています' })
       await wait(900)
     }
@@ -172,7 +212,7 @@ export function CallScene({
     if (node.answerKey) ctx.current.answers[node.answerKey] = c.value
     const q = questionOf(node, ctx.current)
     if (q) answerLog.current.push({ key: node.answerKey ?? node.id, question: q, answer: label })
-    spend(4)
+    spend(UNIT_STEP)
     await wait(400)
     if (c.reply) await say(c.reply)
     if (!c.next) await maybeRecall(node.id, c.value)
@@ -186,7 +226,7 @@ export function CallScene({
     ctx.current.answers[input.key] = value
     push({ who: 'me', text: value || '……ひみつ。' })
     answerLog.current.push({ key: input.key, question: questionOf(node, ctx.current) ?? input.prompt, answer: value || '（書かなかった）' })
-    spend(4)
+    spend(UNIT_STEP)
     await wait(400)
     if (node.inputReply) await say(node.inputReply(value, ctx.current))
     if (value) await maybeRecall(input.key, 'input')
@@ -247,7 +287,22 @@ export function CallScene({
         role="log"
         aria-live="polite"
         aria-label="通話の字幕"
-        onClick={() => skipRef.current?.()}
+        tabIndex={0}
+        data-fast={fast}
+        onPointerDown={startHold}
+        onPointerUp={endHold}
+        onPointerLeave={endHold}
+        onPointerCancel={endHold}
+        onContextMenu={(e) => e.preventDefault()}
+        onKeyDown={(e) => {
+          if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault()
+            fastRef.current = true
+            setFast(true)
+          }
+        }}
+        onKeyUp={endHold}
+        onBlur={endHold}
       >
         {log.map((e) => (
           <div key={e.id} className={`bubble ${e.who}${e.final ? ' final' : ''}`}>
@@ -317,7 +372,7 @@ export function CallScene({
             </button>
           </form>
         )}
-        {!pending && !ended && <p className="tap-hint">画面をタップすると、少し早く進みます</p>}
+        {!pending && !ended && <p className="tap-hint">{fast ? '早送り中…' : '画面を長押しすると、早く進みます'}</p>}
       </div>
     </section>
   )

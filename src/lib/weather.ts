@@ -1,5 +1,5 @@
 import type { WeatherInfo, WeatherKind } from '../types'
-import type { Prefecture } from '../data/prefectures'
+import { PREFECTURES, type Prefecture } from '../data/prefectures'
 
 /**
  * 天気の取得
@@ -12,6 +12,33 @@ import type { Prefecture } from '../data/prefectures'
  */
 export async function fetchWeather(pref: Prefecture): Promise<WeatherInfo | null> {
   return (await fromJma(pref)) ?? (await fromOpenMeteo(pref))
+}
+
+/**
+ * 現在地の天気。
+ * 1. Open-Meteo（その地点の現在の天気）
+ * 2. 取れなければ、現在地にいちばん近い県庁所在地の、気象庁の府県天気予報
+ */
+export async function fetchWeatherAt(lat: number, lon: number): Promise<WeatherInfo | null> {
+  const here = await fromOpenMeteoAt(lat, lon, '現在地')
+  if (here) return { ...here, source: 'here' }
+  const near = nearestPref(lat, lon)
+  const w = near ? await fromJma(near) : null
+  return w ? { ...w, isDay: isDaytime(lat, lon), station: `現在地付近・${w.station}`, source: 'here' } : null
+}
+
+/** いちばん近い県庁所在地の都道府県 */
+export function nearestPref(lat: number, lon: number): Prefecture | undefined {
+  let best: Prefecture | undefined
+  let bestD = Infinity
+  for (const p of PREFECTURES) {
+    const d = (p.lat - lat) ** 2 + ((p.lon - lon) * Math.cos((lat * Math.PI) / 180)) ** 2
+    if (d < bestD) {
+      bestD = d
+      best = p
+    }
+  }
+  return best
 }
 
 async function getJson(url: string, timeoutMs = 6000): Promise<unknown> {
@@ -89,9 +116,13 @@ export function classifyJma(code: string, text: string): { kind: WeatherKind; la
 // ---------------- Open-Meteo（予備） ----------------
 
 async function fromOpenMeteo(pref: Prefecture): Promise<WeatherInfo | null> {
+  return fromOpenMeteoAt(pref.lat, pref.lon, pref.station)
+}
+
+async function fromOpenMeteoAt(lat: number, lon: number, station: string): Promise<WeatherInfo | null> {
   const url =
-    `https://api.open-meteo.com/v1/forecast?latitude=${pref.lat}&longitude=${pref.lon}` +
-    `&current=weather_code,is_day&timezone=Asia%2FTokyo`
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lon.toFixed(2)}` +
+    `&current=weather_code,is_day&timezone=auto`
   const json = (await getJson(url)) as { current?: { weather_code?: number; is_day?: number } } | null
   const code = json?.current?.weather_code
   if (typeof code !== 'number') return null
@@ -100,7 +131,7 @@ async function fromOpenMeteo(pref: Prefecture): Promise<WeatherInfo | null> {
     kind,
     label,
     isDay: json?.current?.is_day === 1,
-    station: pref.station,
+    station,
     fetchedAt: new Date().toISOString(),
     source: 'open-meteo',
   }
