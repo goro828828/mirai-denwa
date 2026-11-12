@@ -145,8 +145,6 @@ export function PhoneScene({
     if (stage !== 'input') return
     if (typed.length < 4) return setNote('年を4けたで押してください。')
     const r = resolveDial(Number(typed), age, today.getFullYear())
-    if (r.kind === 'now') return retry('この番号には かけられません', '今の自分には、かけられないみたいだ。10年以上先か、過去の年を押してみよう。')
-    if (r.kind === 'tooFar') return retry('この番号には かけられません', 'その年には、つながらないみたいだ。さかのぼれるのは、10歳の自分までらしい。')
     setStage('dialing')
     setNote('')
     // 月日（今日と同じ）が、ひとりでに押される
@@ -163,14 +161,23 @@ export function PhoneScene({
     await sleep(500)
     if (!alive.current) return
     const label = `${typed}.${mmdd.slice(0, 2)}.${mmdd.slice(2)}`
-    if (r.kind === 'unreachable') {
+    // つながる相手がいない年：いったんかけてみて、つながらないことがわかる
+    if (r.kind === 'now' || r.kind === 'tooFar' || r.kind === 'unreachable') {
       setStage('ringing')
-      setLcd(`${label} つながりません`)
+      setLcd(`${label} 呼び出し中`)
+      await sleep(1600)
+      if (!alive.current) return
+      setLcd(`${label} ……`)
       sound.busy()
       await sleep(2600)
       if (!alive.current) return
       dialStop.current = sound.dialTone()
-      return retry('おかけになった年には つながりません', '……電話が、つながらない。遠すぎたのかもしれない。別の年を押してみよう。')
+      const why = {
+        now: '……この番号には、かからないようだ。近すぎたのかもしれない。',
+        tooFar: '……この番号には、かからないようだ。そんなに昔には、届かないのかもしれない。',
+        unreachable: '……この番号には、かからないようだ。遠すぎたのかもしれない。',
+      }[r.kind]
+      return retry('もう一度 年を押してください', `${why}別の年を押してみよう。`)
     }
     setStage('ringing')
     setLcd(`${label} 呼び出し中`)
@@ -271,7 +278,7 @@ export function PhoneScene({
 
       {stage === 'input' && (
         <div className="dial-pad" role="group" aria-label="かけたい年を押す">
-          <p className="dial-help">電話の押しボタンで、かけたい年（4けた）を押してください。日付は今日と同じです。未来は100歳の自分まで、過去は10歳の自分まで。</p>
+          <p className="dial-help">電話の押しボタンで、かけたい年（4けた）を押してください。日付は今日と同じです。</p>
           <div className="dial-actions">
             <button type="button" className="btn ghost" onClick={erase} disabled={!typed}>
               1けた消す
