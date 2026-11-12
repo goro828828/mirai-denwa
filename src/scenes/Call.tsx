@@ -91,6 +91,7 @@ export function CallScene({
     age: profile.age ?? DEFAULT_AGE,
     futureAge: (profile.age ?? DEFAULT_AGE) + years,
     relation,
+    gender: profile.gender,
     tier: tierFor(years, profile.age ?? DEFAULT_AGE, relation),
     topic: pickTopic(Math.random, prev?.topic),
     callIndex,

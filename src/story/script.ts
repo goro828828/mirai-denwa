@@ -119,6 +119,18 @@ const agingLine = (c: CallContext): Variant[] => {
   }
 }
 
+/**
+ * 子孫が出たとき：あなた（ご先祖さま）が「過去の自分と電話で話した」と、家族から聞いたような気がする、という一言。
+ * 孫・ひ孫は、あなたの性別で「おじいちゃん／おばあちゃん」と呼ぶ。その先の代や、性別を答えていないときは「うちに伝わる話」として話す。
+ */
+function heardLine(c: CallContext): string {
+  const g = c.gender === 'male' ? 'おじいちゃん' : c.gender === 'female' ? 'おばあちゃん' : null
+  const who = g && c.relation === '孫' ? g : g && c.relation === 'ひ孫' ? `ひい${g}` : null
+  return who
+    ? `……そういえば、${who}から聞いたことがあるような……。過去の自分と、電話で話したことがあるって……。`
+    : '……そういえば、うちに昔から伝わる話があるような……。ご先祖さまが、過去の自分と電話で話したことがあるって……。'
+}
+
 /** 前回の電話から、どれくらいたったか */
 const sinceLine = (c: CallContext): Variant => {
   const h = c.prev?.hoursAgo ?? 0
@@ -281,18 +293,19 @@ export const NODES: Record<string, StoryNode> = {
     say: (c) => [c.relation ? t('……はい、もしもし？ ……どちらさま、ですか？') : t('……はい、もしもし？', undefined, '……はい、もしもし。', undefined, undefined)],
     choices: (c) => {
       if (c.relation) {
-        // 子孫が出た
+        // 子孫が出た。名乗ると、家族から聞いた話を思い出す
         const who = `${c.name}の${c.relation}`
+        const heard = t(heardLine(c))
         return [
           {
             label: me(`${c.years}年前の、${c.name}です`, undefined, `${c.years}年前の${c.name}です`, `${c.years}年前の${c.name}だよ`),
             value: 'ancestor',
-            reply: [t(`……え、${c.years}年前？ ……もしかして、ご先祖さま？`), t(`こっちは、${who}{だよ}。……昔から電話がかかってくるなんて、思わなかった。`)],
+            reply: [t(`……え、${c.years}年前の、${c.name}……？`), heard, t(`こっちは、${who}{だよ}。……本当に、かかってくるなんて。`)],
           },
           {
-            label: me('いきなり、ごめんなさい', 'いきなり、ごめんね', 'いきなりごめんね', 'いきなりごめん！'),
+            label: me(`いきなりごめんなさい。${c.name}です`, `いきなりごめんね。${c.name}です`, `いきなりごめんね、${c.name}だよ`, `いきなりごめん！ ${c.name}だよ`),
             value: 'sorry',
-            reply: [t('ううん、びっくりしただけ。'), t(`こっちは、${who}{だよ}。……そっちの声、聞けてうれしい。`)],
+            reply: [t(`……${c.name}？ ……${c.years}年前の？`), heard, t(`こっちは、${who}{だよ}。……そっちの声、聞けてうれしい。`)],
           },
         ]
       }

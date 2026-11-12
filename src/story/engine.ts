@@ -1,4 +1,4 @@
-import type { LifeStage, WeatherInfo } from '../types'
+import type { Gender, LifeStage, WeatherInfo } from '../types'
 import { renderDialect, type DialectProfile } from '../data/dialects'
 import type { Text, Variant } from './text'
 
@@ -200,6 +200,8 @@ export interface CallContext {
   futureAge: number
   /** 子孫が出たとき（「孫」など） */
   relation?: string
+  /** あなたの性別（子孫があなたを「おじいちゃん／おばあちゃん」と呼ぶときに使う） */
+  gender?: Gender
   tier: AgeTier
   /** 「最近の◯◯」枠に入る話題（通話ごとにランダム。前回と同じ話題は避ける） */
   topic: string
