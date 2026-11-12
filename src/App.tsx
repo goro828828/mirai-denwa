@@ -234,7 +234,7 @@ export default function App() {
     setProfile(p)
     requestWeather(p.prefCode)
     // 相手の年代は、年齢がわかってから決める（未来の自分が100歳を超えない範囲）。
-    // 最初の3回のあと、15回ごとに1回は、自分から年代を選んでかける回になる
+    // 10回ごとの区切りの1〜9回目のどこか1回は、自分から年代を選んでかける回になる（10回目は特別な回）
     // 裏コード：名前「開発者」・北海道・20歳にすると、いつでも「自分からかける回」になる（試しに遊ぶため）
     const cheat = p.nickname.trim() === '開発者' && p.prefCode === '01' && p.age === 20
     const ev = cheat || isDialEvent(history.length + 1, dialSeed())

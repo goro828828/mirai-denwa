@@ -58,7 +58,7 @@ export function pickYears(age = DEFAULT_AGE, rand = Math.random): number {
 /**
  * これまでの通話履歴の件数から、今回つながる相手を決める。
  * 1〜3回目は10年後。4回目以降は10〜90年後（100歳まで）。
- * 履歴が10件・20件…たまった次の通話（11・21・31…回目）は特別：100年後の自分か、生まれる10年前の親（半々）。
+ * 10の倍数の回（10・20・30…回目）は特別：100年後の自分か、生まれる10年前の親（半々）。
  * 戻り値の relation が「親」なら、親につながる。
  */
 export function pickYearsFor(historyCount: number, age = DEFAULT_AGE, rand = Math.random): { years: number; relation?: string } {
@@ -67,9 +67,9 @@ export function pickYearsFor(historyCount: number, age = DEFAULT_AGE, rand = Mat
   return { years: pickYears(age, rand) }
 }
 
-/** 10回に1回の特別な回か（11・21・31…回目） */
+/** 10回に1回の特別な回か（10・20・30…回目） */
 export function isSpecialCall(callIndex: number): boolean {
-  return callIndex > FIXED_FIRST_CALLS && (callIndex - 1) % SPECIAL_EVERY === 0
+  return callIndex > FIXED_FIRST_CALLS && callIndex % SPECIAL_EVERY === 0
 }
 
 /** 1〜3回目は10年後に固定 */
@@ -77,17 +77,16 @@ export const FIXED_FIRST_CALLS = 3
 
 /**
  * 自分から年代を選んでかけられる回（イベント）
- * 最初の3回のあと、15回ごとの区切りの中で、必ずどこか1回だけ起きる（どの回かは区切りごとに抽選）。
- * 10回に1回の特別な回（11・21・31…回目）とは重ならないように、その回を除いて抽選する。
+ * 10回ごとの区切り（1〜10回目、11〜20回目…）の中で、必ず1回だけ起きる。
+ * 区切りの10回目は特別な回なので、1〜9回目のどこか（最初の区切りは、10年後に固定の1〜3回目を除いた4〜9回目）から抽選する。
  * 抽選は端末ごとの種（seed）から決まるので、同じ区切りの中で結果が変わらない。
  */
-export const DIAL_EVENT_SPAN = 15
+export const DIAL_EVENT_SPAN = 10
 export function isDialEvent(callIndex: number, seed: number): boolean {
-  if (callIndex <= FIXED_FIRST_CALLS) return false
-  const cycle = Math.floor((callIndex - FIXED_FIRST_CALLS - 1) / DIAL_EVENT_SPAN)
-  const first = FIXED_FIRST_CALLS + 1 + cycle * DIAL_EVENT_SPAN
-  const allowed = Array.from({ length: DIAL_EVENT_SPAN }, (_, i) => first + i).filter((n) => !isSpecialCall(n))
-  return callIndex === allowed[Math.floor(dialEventRand(seed, cycle) * allowed.length)]
+  if (callIndex <= FIXED_FIRST_CALLS || isSpecialCall(callIndex)) return false
+  const block = Math.floor((callIndex - 1) / DIAL_EVENT_SPAN)
+  const allowed = Array.from({ length: DIAL_EVENT_SPAN - 1 }, (_, i) => block * DIAL_EVENT_SPAN + i + 1).filter((n) => n > FIXED_FIRST_CALLS)
+  return callIndex === allowed[Math.floor(dialEventRand(seed, block) * allowed.length)]
 }
 function dialEventRand(seed: number, cycle: number): number {
   // mulberry32
