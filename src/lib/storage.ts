@@ -3,10 +3,11 @@
  * 端末の変更やブラウザデータの削除で消える可能性がある。クラウド保存ではない。
  */
 import type { CallRecord } from '../types'
+import { storeKey } from './trial'
 
-const HISTORY_KEY = 'mirai-denwa:history:v1'
-const SETTINGS_KEY = 'mirai-denwa:settings:v1'
-const DRAFT_KEY = 'mirai-denwa:profile-draft:v1'
+const HISTORY_KEY = storeKey('mirai-denwa:history:v1')
+const SETTINGS_KEY = storeKey('mirai-denwa:settings:v1')
+const DRAFT_KEY = storeKey('mirai-denwa:profile-draft:v1')
 
 function read<T>(key: string, fallback: T): T {
   try {

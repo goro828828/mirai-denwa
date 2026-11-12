@@ -1,3 +1,4 @@
+import { TRIAL, storeKey } from './lib/trial'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CallRecord, Profile, WeatherInfo, WeatherKind } from './types'
 import { findPref } from './data/prefectures'
@@ -39,7 +40,7 @@ function landscapePreview(): { season?: Season; tod?: TimeOfDay; weather?: Weath
 type Scene = 'about' | 'title' | 'pickup' | 'lost' | 'fill' | 'phone' | 'call' | 'eject' | 'return' | 'result' | 'history'
 
 /** 自分から年代を選んでかけるイベントの抽選に使う、端末ごとの種 */
-const DIAL_SEED_KEY = 'mirai-denwa:dial-seed:v1'
+const DIAL_SEED_KEY = storeKey('mirai-denwa:dial-seed:v1')
 function dialSeed(): number {
   try {
     const v = Number(localStorage.getItem(DIAL_SEED_KEY))
@@ -53,7 +54,7 @@ function dialSeed(): number {
 }
 
 /** 初めて開いたときの「このアプリについて」を見たか */
-const ABOUT_KEY = 'mirai-denwa:about-seen:v1'
+const ABOUT_KEY = storeKey('mirai-denwa:about-seen:v1')
 function aboutSeen(): boolean {
   try {
     return localStorage.getItem(ABOUT_KEY) === '1'
@@ -63,7 +64,7 @@ function aboutSeen(): boolean {
 }
 
 /** 初回だけの導入を見終わったか */
-const PROLOGUE_KEY = 'mirai-denwa:prologue-seen:v1'
+const PROLOGUE_KEY = storeKey('mirai-denwa:prologue-seen:v1')
 function prologueSeen(): boolean {
   try {
     return localStorage.getItem(PROLOGUE_KEY) === '1'
@@ -110,9 +111,9 @@ function usePrefersReducedMotion() {
 
 export default function App() {
   // 初めて開いたときだけ、ホーム画面の前に「このアプリについて」を出す（すでに遊んだことがある人には出さない）
-  // URL に ?about をつけると、いつでも見られる（確認用）
+  // URL に ?about をつけると、説明画面だけをいつでも見られる。?first なら、初回の流れをまるごと（lib/trial.ts）
   const [scene, setScene] = useState<Scene>(() =>
-    new URLSearchParams(location.search).has('about') || !(aboutSeen() || loadHistory().length > 0) ? 'about' : 'title',
+    TRIAL || new URLSearchParams(location.search).has('about') || !(aboutSeen() || loadHistory().length > 0) ? 'about' : 'title',
   )
   const [profile, setProfile] = useState<Profile | null>(null)
   const [weather, setWeather] = useState<WeatherInfo | null | undefined>(undefined)
