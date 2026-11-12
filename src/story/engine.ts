@@ -9,11 +9,11 @@ import type { Text, Variant } from './text'
  * - elder：60〜79歳（年を重ねた、ゆっくり穏やかな口調。70歳から、少し物忘れが出てくる）
  * - eighty：80〜89歳（ゆっくり、ひと息ずつ話す。耳が少し遠い）
  * - ninety：90〜100歳（言葉少なで、遠い記憶を手繰るように話す）
- * - past：10年前の自分（特別）／century：100年後の自分（特別）
+ * - parent：生まれる10年前の親（10回に1回の特別な回）／century：100年後の自分（特別。ふだんの上限100歳とは別で、120歳の自分とも話せる）
  * - kin：自分の年代を越えた未来で、電話に出てくれる子孫（孫・ひ孫…雲孫。年はあなたと同じくらい）
  * 2005年生まれ（21歳）を起点に作った台詞を、年齢で流用する：10年後＝31歳、20・30年後＝41・51歳、40〜50年後＝61・71歳、60年後＝81歳、70年後＝91歳
  */
-export type AgeTier = 'young' | 'middle' | 'elder' | 'eighty' | 'ninety' | 'past' | 'century' | 'kin'
+export type AgeTier = 'young' | 'middle' | 'elder' | 'eighty' | 'ninety' | 'past' | 'century' | 'kin' | 'parent'
 
 /** 未来の自分の年齢の上限（これを超える年代には、自分は出ない） */
 export const MAX_AGE = 100
@@ -25,13 +25,18 @@ export const DEFAULT_AGE = 21
 
 export const YEARS_CHOICES = [10, 20, 30, 40, 50, 60, 70, 80, 90] as const
 
-/** 10回に1回だけ現れる特別な相手 */
-export const SPECIAL_YEARS = [-10, 100] as const
+/** 10回に1回だけ現れる特別な相手：100年後の自分か、生まれる10年前の親 */
+export const CENTURY_YEARS = 100
+/** 親が出たときの relation */
+export const PARENT = '親'
+/** 親につながる年：生まれた年の10年前（＝ いまから「年齢＋10」年前） */
+export const parentYears = (age: number) => -(age + 10)
 /** 履歴がこの件数たまるごとに、次の通話が特別になる */
 export const SPECIAL_EVERY = 10
 
 /** 何年後の自分（または子孫）か → 話し方 */
 export function tierFor(years: number, age = DEFAULT_AGE, relation?: string): AgeTier {
+  if (relation === PARENT) return 'parent'
   if (relation) return 'kin'
   if (years < 0) return 'past'
   if (years >= 100) return 'century'
@@ -53,15 +58,18 @@ export function pickYears(age = DEFAULT_AGE, rand = Math.random): number {
 /**
  * これまでの通話履歴の件数から、今回つながる相手を決める。
  * 1〜3回目は10年後。4回目以降は10〜90年後（100歳まで）。
- * 履歴が10件・20件…たまった次の通話は、10年前か100年後の自分（10年前は、10歳より前にはさかのぼらない）。
+ * 履歴が10件・20件…たまった次の通話（11・21・31…回目）は特別：100年後の自分か、生まれる10年前の親（半々）。
+ * 戻り値の relation が「親」なら、親につながる。
  */
-export function pickYearsFor(historyCount: number, age = DEFAULT_AGE, rand = Math.random): number {
-  if (historyCount < FIXED_FIRST_CALLS) return 10
-  if (historyCount % SPECIAL_EVERY === 0) {
-    const options = SPECIAL_YEARS.filter((y) => y > 0 || age + y >= MIN_PLAYER_AGE)
-    return options[Math.floor(rand() * options.length)]
-  }
-  return pickYears(age, rand)
+export function pickYearsFor(historyCount: number, age = DEFAULT_AGE, rand = Math.random): { years: number; relation?: string } {
+  if (historyCount < FIXED_FIRST_CALLS) return { years: 10 }
+  if (isSpecialCall(historyCount + 1)) return rand() < 0.5 ? { years: parentYears(age), relation: PARENT } : { years: CENTURY_YEARS }
+  return { years: pickYears(age, rand) }
+}
+
+/** 10回に1回の特別な回か（11・21・31…回目） */
+export function isSpecialCall(callIndex: number): boolean {
+  return callIndex > FIXED_FIRST_CALLS && (callIndex - 1) % SPECIAL_EVERY === 0
 }
 
 /** 1〜3回目は10年後に固定 */
@@ -70,22 +78,23 @@ export const FIXED_FIRST_CALLS = 3
 /**
  * 自分から年代を選んでかけられる回（イベント）
  * 最初の3回のあと、15回ごとの区切りの中で、必ずどこか1回だけ起きる（どの回かは区切りごとに抽選）。
+ * 10回に1回の特別な回（11・21・31…回目）とは重ならないように、その回を除いて抽選する。
  * 抽選は端末ごとの種（seed）から決まるので、同じ区切りの中で結果が変わらない。
  */
 export const DIAL_EVENT_SPAN = 15
 export function isDialEvent(callIndex: number, seed: number): boolean {
   if (callIndex <= FIXED_FIRST_CALLS) return false
-  const k = callIndex - FIXED_FIRST_CALLS - 1
-  const cycle = Math.floor(k / DIAL_EVENT_SPAN)
-  return k % DIAL_EVENT_SPAN === dialEventPos(seed, cycle)
+  const cycle = Math.floor((callIndex - FIXED_FIRST_CALLS - 1) / DIAL_EVENT_SPAN)
+  const first = FIXED_FIRST_CALLS + 1 + cycle * DIAL_EVENT_SPAN
+  const allowed = Array.from({ length: DIAL_EVENT_SPAN }, (_, i) => first + i).filter((n) => !isSpecialCall(n))
+  return callIndex === allowed[Math.floor(dialEventRand(seed, cycle) * allowed.length)]
 }
-export function dialEventPos(seed: number, cycle: number): number {
+function dialEventRand(seed: number, cycle: number): number {
   // mulberry32
   let x = (seed + cycle * 0x9e3779b9) >>> 0
   x = Math.imul(x ^ (x >>> 15), x | 1)
   x ^= x + Math.imul(x ^ (x >>> 7), x | 61)
-  const r = ((x ^ (x >>> 14)) >>> 0) / 4294967296
-  return Math.floor(r * DIAL_EVENT_SPAN)
+  return ((x ^ (x >>> 14)) >>> 0) / 4294967296
 }
 
 /** 自分の年代を越えた未来に出る子孫（30年ごとに一代ずつ。雲孫まで） */
@@ -218,6 +227,7 @@ export function speak(variant: Variant, c: CallContext): string {
     eighty: () => v.eighty ?? v.elder ?? v.middle ?? v.young,
     ninety: () => v.ninety ?? v.eighty ?? v.elder ?? v.middle ?? v.young,
     past: () => v.past ?? v.young,
+    parent: () => v.parent ?? v.young,
     century: () => v.century ?? v.elder ?? v.middle ?? v.young,
     kin: () => v.kin ?? v.young,
   }

@@ -50,6 +50,7 @@ export function finalMessage(c: CallContext): Variant {
         eighty: `さみしかった日のことも、この歳になると、いとおしい{よ}。人を大事に思える${name}の証{だよ}。`,
         ninety: `……さみしかった日も、今は、やさしい思い出{だよ}。${name}は、人を大事にできる人{だよ}。`,
         kin: `さみしい日も、あるよ{ね}。……その日も、ちゃんとこっちまでつながってる{よ}。`,
+        parent: `さみしい日もあるよ{ね}。……でも、${name}を大事に思ってる人は、きっといる{よ}。`,
       })
     case 'sad':
       return ag(t(
@@ -62,6 +63,7 @@ export function finalMessage(c: CallContext): Variant {
         eighty: `つらい日は、無理をしなくていいん{だよ}。……ゆっくり、おやすみ。`,
         ninety: `……つらい日は、休んで{いい}{よ}。……ゆっくり、おやすみ。`,
         kin: `つらい日は、無理しないで{ね}。……ずっと先から、応援してる{から}。`,
+        parent: `つらい日は、無理しなくていい{から}{ね}。……ゆっくり、おやすみ。`,
       })
     case 'happy':
       return ag(t(
@@ -74,6 +76,7 @@ export function finalMessage(c: CallContext): Variant {
         eighty: `今日の「うれしい」を、覚えておいて{ね}。この歳になって、いちばん思い出すのは、そういう日{だよ}。`,
         ninety: `……今日の「うれしい」。……それだけで、十分{だよ}。`,
         kin: `うれしい日のこと、聞けてよかった。……その気持ち、こっちまで届いた{よ}。`,
+        parent: `今日の「うれしい」、大事にして{ね}。……聞かせてくれて、ありがとう。`,
       })
     case 'grateful':
       return ag(t(
@@ -86,6 +89,7 @@ export function finalMessage(c: CallContext): Variant {
         eighty: `「ありがとう」と思える人を、大事に{ね}。言えるうちに、言ってごらん。`,
         ninety: `……「ありがとう」は、言えるうちに{ね}。……それだけ{だよ}。`,
         kin: `「ありがとう」と思える人がいるんだ{ね}。……その人のおかげで、今のこっちがあるのかも。`,
+        parent: `「ありがとう」と思える人を、大事にして{ね}。……言えるうちに、言って{ね}。`,
       })
     case 'tired':
       return ag(t(
@@ -98,6 +102,7 @@ export function finalMessage(c: CallContext): Variant {
         eighty: `よくがんばってた{ね}、${name}。……今日は、早めにおやすみ。`,
         ninety: `……よく、がんばってた{ね}。……もう、休んで{いい}{よ}。`,
         kin: `疲れてるのに、ありがとう。……今日は、ちゃんと休んで{ね}。`,
+        parent: `よくがんばってる{ね}、${name}。……今日は、ちゃんと休んで{ね}。`,
       })
     case 'anxious':
       return ag(t(
@@ -110,6 +115,7 @@ export function finalMessage(c: CallContext): Variant {
         eighty: `不安な夜も、時間がたつと、やさしい思い出になる{よ}。今夜の${name}のこと、ちゃんと覚え{てる}{から}{ね}。`,
         ninety: `……不安な夜も、ちゃんと明けた{よ}。……だいじょうぶ。`,
         kin: `不安な夜も、ちゃんと明ける{よ}。……こっちが、そのしるし{だよ}。`,
+        parent: `不安な夜も、ちゃんと明ける{よ}。……だいじょうぶ。`,
       })
     case 'excited':
       return ag(t(
@@ -122,6 +128,7 @@ export function finalMessage(c: CallContext): Variant {
         eighty: `${passion}その「わくわく」が、こっちからはまぶしい{よ}。心ゆくまで、味わって{ね}。`,
         ninety: `${passion}……その「わくわく」。……まぶしい{ね}。`,
         kin: `${passion}その「わくわく」、ずっと先まで届いてる{よ}。思いきり味わって{ね}。`,
+        parent: `${passion}その「わくわく」、大事にして{ね}。……こっちまで、元気をもらった{よ}。`,
       })
     case 'unsure':
       return ag(t(
@@ -134,6 +141,7 @@ export function finalMessage(c: CallContext): Variant {
         eighty: `わからない日も、振り返れば、懐かしい一日{だよ}。それでいいん{だよ}。`,
         ninety: `……わからない日も、いい日だった{よ}。……それでいい。`,
         kin: `わからない日も、ちゃんと大事な一日{だよ}。……こっちは、そう思う。`,
+        parent: `わからない日も、ちゃんと大事な一日{だよ}。それで{いい}{よ}。`,
       })
     case 'calm':
     default:
@@ -147,6 +155,7 @@ export function finalMessage(c: CallContext): Variant {
         eighty: `${who}過ごす何でもない一日が、この歳になると、いちばん懐かしいん{だよ}。`,
         ninety: `……${who}過ごす、何でもない一日。……それが、いちばん{だよ}。`,
         kin: `${who}過ごす何でもない今日が、ずっと先の、こっちまでつながってる{よ}。大事にして{ね}。`,
+        parent: `${who}過ごす何でもない今日を、大事に{ね}。……なんでか、そう言いたくなった。`,
       })
   }
 }

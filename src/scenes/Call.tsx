@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NODES, RECALL_CHANCE, recallFor, type Choice, type InputDef, type StoryNode, type Variant } from '../story/script'
-import { DEFAULT_AGE, callerLabel, cleanInput, resolveText, scriptFor, speak, tierFor, type CallContext, type PrevCall } from '../story/engine'
+import { DEFAULT_AGE, PARENT, callerLabel, cleanInput, resolveText, scriptFor, speak, tierFor, type CallContext, type PrevCall } from '../story/engine'
 import { pickTopic } from '../story/topics'
 import type { AnswerLog, Profile, WeatherInfo } from '../types'
-import { dialectFor } from '../data/dialects'
+import { dialectFor, parentDialectFor } from '../data/dialects'
 import { sound } from '../lib/sound'
 import { formatDuration } from '../lib/format'
 import { TOTAL_UNITS } from '../lib/cardImage'
@@ -82,7 +82,8 @@ export function CallScene({
 
   const ctx = useRef<CallContext>({
     name: profile.nickname.replace(/[{}]/g, ''),
-    dialect: dialectFor(profile.prefCode),
+    // 生まれる10年前の親は、今より少しだけ強い方言で話す
+    dialect: relation === PARENT ? parentDialectFor(profile.prefCode) : dialectFor(profile.prefCode),
     lifestage: profile.lifestage,
     weather,
     hour: new Date().getHours(),

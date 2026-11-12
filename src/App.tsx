@@ -237,8 +237,10 @@ export default function App() {
     // 最初の3回のあと、15回ごとに1回は、自分から年代を選んでかける回になる
     const ev = isDialEvent(history.length + 1, dialSeed())
     setDialed(ev)
-    setRelation(undefined)
-    setYears(ev ? 10 : pickYearsFor(history.length, p.age ?? DEFAULT_AGE))
+    // 自分からかける回と、10回に1回の特別な回（100年後の自分／生まれる10年前の親）は重ならない
+    const pick = pickYearsFor(history.length, p.age ?? DEFAULT_AGE)
+    setYears(ev ? 10 : pick.years)
+    setRelation(ev ? undefined : pick.relation)
     if (prologue || reduced) return setScene('phone')
     // 2回目以降：白くとんでから、公衆電話の前へ
     setWarp('out')

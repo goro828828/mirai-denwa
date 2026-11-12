@@ -26,6 +26,8 @@ export interface Variant {
   ninety?: Text
   /** 子孫（孫・ひ孫…。省略時：10年後の台詞） */
   kin?: Text
+  /** 生まれる10年前の親（省略時：10年後の台詞） */
+  parent?: Text
 }
 
 export const t = (young: Text, middle?: Text, elder?: Text, past?: Text, century?: Text): Variant => ({ young, middle, elder, past, century })
@@ -45,4 +47,4 @@ export const me =
   }
 
 /** 80代・90代・子孫の台詞を足す：ag(t(...), { eighty, ninety, kin }) */
-export const ag = (v: Variant, more: Pick<Variant, 'eighty' | 'ninety' | 'kin'>): Variant => ({ ...v, ...more })
+export const ag = (v: Variant, more: Pick<Variant, 'eighty' | 'ninety' | 'kin' | 'parent'>): Variant => ({ ...v, ...more })

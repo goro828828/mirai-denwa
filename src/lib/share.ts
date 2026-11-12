@@ -3,7 +3,9 @@ import { cardFileName, renderCardPng, SITE_URL } from './cardImage'
 import { yearsLabel } from '../story/engine'
 
 export const shareText = (r: CallRecord) =>
-  r.relation
+  r.relation === '親'
+    ? `${yearsLabel(r.years ?? 10)}の親と、電話で話しました。\n#未来の自分から着信です`
+    : r.relation
     ? `${yearsLabel(r.years ?? 10)}に電話をかけたら、${r.relation}が出てくれました。\n#未来の自分から着信です`
     : r.dialed
       ? `${yearsLabel(r.years ?? 10)}の自分に、電話をかけました。\n#未来の自分から着信です`
