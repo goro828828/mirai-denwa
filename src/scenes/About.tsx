@@ -12,19 +12,26 @@ const LINES = [
   'みらい電話は、いつか懐かしくなる今日を大切にするための、\n電話のかたちをした日記です。',
 ]
 
+/** 1文を読む時間：文字数に合わせて長めに（最初の1文は少し早めに出す） */
+const readMs = (line: string) => 3200 + [...line].length * 90
+
 export function AboutScene({ reduced, onDone }: { reduced: boolean; onDone: () => void }) {
-  const [shown, setShown] = useState(reduced ? LINES.length : 0)
+  const [shown, setShown] = useState(reduced ? LINES.length : 1)
   useEffect(() => {
     if (shown >= LINES.length) return
-    const t = window.setTimeout(() => setShown((n) => n + 1), shown === 0 ? 700 : 2000)
+    const t = window.setTimeout(() => setShown((n) => n + 1), readMs(LINES[shown - 1]))
     return () => window.clearTimeout(t)
   }, [shown])
   const ready = shown >= LINES.length
+  // 画面をタップすると、次の文をすぐに出す（自分のペースで読める）
+  const next = () => {
+    if (!ready) setShown((n) => n + 1)
+  }
   return (
-    <section className="scene about-scene">
+    <section className="scene about-scene" onClick={next}>
       <div className="about-lines" aria-live="polite">
         {LINES.slice(0, shown).map((l) => (
-          <p key={l} className="fade-in">
+          <p key={l} className="about-line">
             {l.split('\n').map((part, i) => (
               <span key={i}>
                 {i > 0 && <br />}
@@ -40,9 +47,7 @@ export function AboutScene({ reduced, onDone }: { reduced: boolean; onDone: () =
             みらい電話をひらく
           </button>
         ) : (
-          <button type="button" className="btn text small" onClick={() => setShown(LINES.length)}>
-            すべて表示する
-          </button>
+          <p className="hint about-hint">画面をタップすると、次へ進みます</p>
         )}
       </div>
     </section>
