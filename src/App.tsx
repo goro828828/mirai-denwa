@@ -110,7 +110,10 @@ function usePrefersReducedMotion() {
 
 export default function App() {
   // 初めて開いたときだけ、ホーム画面の前に「このアプリについて」を出す（すでに遊んだことがある人には出さない）
-  const [scene, setScene] = useState<Scene>(() => (aboutSeen() || loadHistory().length > 0 ? 'title' : 'about'))
+  // URL に ?about をつけると、いつでも見られる（確認用）
+  const [scene, setScene] = useState<Scene>(() =>
+    new URLSearchParams(location.search).has('about') || !(aboutSeen() || loadHistory().length > 0) ? 'about' : 'title',
+  )
   const [profile, setProfile] = useState<Profile | null>(null)
   const [weather, setWeather] = useState<WeatherInfo | null | undefined>(undefined)
   const [record, setRecord] = useState<CallRecord | null>(null)
