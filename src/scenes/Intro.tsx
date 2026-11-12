@@ -30,11 +30,7 @@ export function TitleScene({
       <TitleLandscape {...landscape} />
       <div className="title-block">
         <p className="title-eyebrow">いつか懐かしくなる今日を、あなたはどう過ごしますか。</p>
-        <h1 className="title">
-          未来の自分から、
-          <br />
-          着信です。
-        </h1>
+        <h1 className="title app-name">みらい電話</h1>
       </div>
       <div className="stack">
         <div className="title-actions">

@@ -10,6 +10,7 @@ import { EjectScene, PhoneScene } from './scenes/Phone'
 import { CallScene, type CallResult } from './scenes/Call'
 import { HistoryScene, ResultScene } from './scenes/Outro'
 import { LostScene, ReturnScene } from './scenes/Prologue'
+import { AboutScene } from './scenes/About'
 import { SettingsDialog } from './components/Settings'
 import { DEFAULT_AGE, isDialEvent, pickYearsFor, type PrevCall } from './story/engine'
 import { pickIllustration } from './lib/illustrations'
@@ -35,7 +36,7 @@ function landscapePreview(): { season?: Season; tod?: TimeOfDay; weather?: Weath
   }
 }
 
-type Scene = 'title' | 'pickup' | 'lost' | 'fill' | 'phone' | 'call' | 'eject' | 'return' | 'result' | 'history'
+type Scene = 'about' | 'title' | 'pickup' | 'lost' | 'fill' | 'phone' | 'call' | 'eject' | 'return' | 'result' | 'history'
 
 /** 自分から年代を選んでかけるイベントの抽選に使う、端末ごとの種 */
 const DIAL_SEED_KEY = 'mirai-denwa:dial-seed:v1'
@@ -48,6 +49,16 @@ function dialSeed(): number {
     return seed
   } catch {
     return 12345
+  }
+}
+
+/** 初めて開いたときの「このアプリについて」を見たか */
+const ABOUT_KEY = 'mirai-denwa:about-seen:v1'
+function aboutSeen(): boolean {
+  try {
+    return localStorage.getItem(ABOUT_KEY) === '1'
+  } catch {
+    return true
   }
 }
 
@@ -98,7 +109,8 @@ function usePrefersReducedMotion() {
 }
 
 export default function App() {
-  const [scene, setScene] = useState<Scene>('title')
+  // 初めて開いたときだけ、ホーム画面の前に「このアプリについて」を出す（すでに遊んだことがある人には出さない）
+  const [scene, setScene] = useState<Scene>(() => (aboutSeen() || loadHistory().length > 0 ? 'title' : 'about'))
   const [profile, setProfile] = useState<Profile | null>(null)
   const [weather, setWeather] = useState<WeatherInfo | null | undefined>(undefined)
   const [record, setRecord] = useState<CallRecord | null>(null)
@@ -383,6 +395,20 @@ export default function App() {
       </div>
 
       <main ref={mainRef} tabIndex={-1} className="main">
+        {scene === 'about' && (
+          <AboutScene
+            reduced={reduced}
+            onDone={() => {
+              sound.unlock()
+              try {
+                localStorage.setItem(ABOUT_KEY, '1')
+              } catch {
+                /* noop */
+              }
+              setScene('title')
+            }}
+          />
+        )}
         {scene === 'title' && (
           <>
             {notice && (
