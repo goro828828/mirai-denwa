@@ -20,7 +20,7 @@ export interface Topic {
   recall: (c: CallContext) => Variant
 }
 
-const SECRET: Variant[] = [t('ふふ、ひみつか。それも{いい}{ね}。', undefined, 'ふふ、ひみつか。それも{いい}{ね}。', 'ひみつか。……10年後の自分にも、ひみつがあるんだ。')]
+export const SECRET: Variant[] = [t('ふふ、ひみつか。それも{いい}{ね}。', undefined, 'ふふ、ひみつか。それも{いい}{ね}。', 'ひみつか。……10年後の自分にも、ひみつがあるんだ。')]
 const text = (c: CallContext) => c.answers.topicText ?? ''
 
 export const TOPICS: Record<string, Topic> = {

@@ -23,7 +23,7 @@ function bureauSteps(): Step[] {
     { who: 'me', text: 'あの、なんの話ですか？' },
     { who: 'future', text: 'あ、ごめんごめん。君には関係ない話だった。' },
     { who: 'future', text: '悪いけど、この通話の記憶は消させてもらうよ。' },
-    { who: 'future', text: '……それと、カードの名前の欄。次は、もう少しやさしい言葉で書くといい。', wait: 2200 },
+    { who: 'future', text: '……それと、カードの名前の欄。次は、[[もう少しやさしい言葉で書くといい]]。', wait: 2200 },
     { act: 'erase', wait: 1800 },
   ]
 }
@@ -42,6 +42,19 @@ const INMU_STEPS: Step[] = [
   { who: 'system', text: '（ガチャッ……ツー、ツー）' },
   { who: 'system', text: '通話履歴が、すべて消えてしまった。', wait: 800 },
 ]
+
+/** [[ ]] で囲んだところを、赤い太字で強調する */
+function emphasize(text: string) {
+  return text.split(/(\[\[.+?\]\])/).map((part, i) =>
+    part.startsWith('[[') ? (
+      <strong key={i} className="em-red">
+        {part.slice(2, -2)}
+      </strong>
+    ) : (
+      part
+    ),
+  )
+}
 
 export function AnomalyScene({
   kind,
@@ -131,7 +144,7 @@ export function AnomalyScene({
       <div className="call-log" role="log" aria-live="polite" aria-label="通話の字幕" tabIndex={0}>
         {log.map((e) => (
           <div key={e.id} className={`bubble ${e.who}`}>
-            <p>{e.text}</p>
+            <p>{emphasize(e.text)}</p>
           </div>
         ))}
         {typing && (

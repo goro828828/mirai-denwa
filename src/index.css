@@ -2037,3 +2037,15 @@ button.cal-day.selected {
   .erase-flash { animation-duration: 0.01s; }
   .anomaly-inmu .bubble.future { animation: none; }
 }
+/* 時間管理局の最後のひとこと：大事なところを赤で */
+.em-red {
+  color: #c0392b;
+  font-weight: 700;
+}
+/* 4択のあとの「＋1」：自分の言葉で答える */
+.btn.choice.free-choice {
+  background: transparent;
+  border-style: dashed;
+  color: var(--on-bg);
+  justify-content: center;
+}

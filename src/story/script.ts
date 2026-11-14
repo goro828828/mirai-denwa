@@ -22,7 +22,7 @@
  */
 import { PARENT, type CallContext } from './engine'
 import { ag, me, t, type Text, type Variant } from './text'
-import { TOPICS, TOPIC_NOUN } from './topics'
+import { SECRET, TOPICS, TOPIC_NOUN } from './topics'
 import { finalMessage } from './finals'
 
 export type { Text, Variant } from './text'
@@ -60,6 +60,36 @@ export interface StoryNode {
   next?: string | ((c: CallContext) => string)
   /** 特別な演出 */
   effect?: 'voice' | 'lowcard' | 'final' | 'listen'
+  /**
+   * 選択肢のあとの「自分の言葉で答える」（4択＋自由回答）。false なら出さない（最初のあいさつなど）。
+   * 省略時は、書いた言葉をそのまま受けとめる返事（freeDefault）。
+   */
+  free?: false | FreeDef
+}
+
+export interface FreeDef {
+  /** 書いた言葉に返す台詞 */
+  reply: (value: string, c: CallContext) => Variant[]
+  /** answerKey に入れる値（あとの会話・最後のメッセージで使う分類） */
+  as?: string
+  /** 書いた言葉を、そのまま入れておく answers のキー */
+  textKey?: string
+  /** 通話履歴に残す質問（ノードに question がないとき） */
+  question?: string
+  placeholder?: string
+  /** 次の場面（省略時はノードの next） */
+  next?: string | ((c: CallContext) => string)
+}
+
+/** 自由回答の、ふつうの受けとめ方 */
+export const freeDefault: FreeDef = {
+  reply: (v) => [
+    ag(t(`「${v}」か。……うん、ちゃんと届いた{よ}。`, undefined, `「${v}」か。……そうかい。ちゃんと聞いた{よ}。`, `「${v}」か。……10年後の自分は、そう思うんだ。`), {
+      ninety: `……「${v}」。……うん。ちゃんと、聞こえた{よ}。`,
+      kin: `「${v}」か。……ご先祖さまの言葉、ちゃんと聞いた{よ}。`,
+      parent: `「${v}」……そっか。ちゃんと、聞いた{よ}。`,
+    }),
+  ],
 }
 
 /** 名乗ったあとの「なぜ電話したのか」（作品の核を最初に手渡す） */
@@ -153,6 +183,8 @@ export const NODES: Record<string, StoryNode> = {
   // ===================== 2回目（再会） =====================
   open2: {
     id: 'open2',
+    // 最初のあいさつは2択のまま（自由回答なし）
+    free: false,
     effect: 'voice',
     say: () => [t('もしもし？')],
     choices: () => [
@@ -171,6 +203,7 @@ export const NODES: Record<string, StoryNode> = {
       { label: '元気だったよ', value: 'fine', reply: [t('よかった。……声で、なんとなくわかった{よ}。')] },
       { label: 'まあまあかな', value: 'soso', reply: [t('まあまあ、か。それくらいが、ちょうど{いい}{よ}。')] },
       { label: 'ちょっと疲れてた', value: 'tired', reply: [t('そっか。今日は、ゆっくり話そう{ね}。')] },
+      { label: 'いろいろあったよ', value: 'mixed', reply: [t('いろいろ、か。……その「いろいろ」も、あとで懐かしくなる{よ}。')] },
     ],
     next: 'memo2',
   },
@@ -191,6 +224,7 @@ export const NODES: Record<string, StoryNode> = {
       { label: 'ちょっとだけあった', value: 'little', reply: [t('そっか。小さな変化って、あとで振り返ると、大事な目印になる{よ}。')] },
       { label: '特に変わらない', value: 'same', reply: [t('変わらない毎日って、実は一番懐かしくなる{よ}。')] },
       { label: 'よくわからない', value: 'unsure', reply: [t('うん。変化は、あとからしか見えないもん{だよ}。')] },
+      { label: 'けっこう変わった', value: 'big', reply: [t('そっか。……変わっていく途中の自分も、あとで愛おしくなる{よ}。')] },
     ],
     next: 'topic',
   },
@@ -204,6 +238,7 @@ export const NODES: Record<string, StoryNode> = {
       { label: '言ったよ', value: 'said', reply: [t('{いい}{ね}。言った方も、言われた方も、あとで覚え{てる}もん{だよ}。')] },
       { label: '言いそびれたかも', value: 'missed', reply: [t('明日、ひとことだけでも言ってみて。きっと、あとで{いい}思い出になる{よ}。')] },
       { label: '思い出せない', value: 'forget', reply: [t('そっか。今日のどこかで、小さく言ってみて。')] },
+      { label: '言われたほうが多いかも', value: 'received', reply: [t('言われた「ありがとう」も、ちゃんと覚えておいて{ね}。あとで、心をあたためてくれる{から}。')] },
     ],
     next: 'mood',
   },
@@ -211,6 +246,8 @@ export const NODES: Record<string, StoryNode> = {
   // ===================== 3回目以降（いつもの） =====================
   open3: {
     id: 'open3',
+    // 最初のあいさつは2択のまま（自由回答なし）
+    free: false,
     effect: 'voice',
     say: () => [t('もしもし。', undefined, 'もしもし。……')],
     choices: (c) => [
@@ -240,6 +277,8 @@ export const NODES: Record<string, StoryNode> = {
    */
   intro3: {
     id: 'intro3',
+    // 最初のあいさつは2択のまま（自由回答なし）
+    free: false,
     say: (c) =>
       forgetsCount(c)
         ? [
@@ -260,12 +299,12 @@ export const NODES: Record<string, StoryNode> = {
           {
             label: me(`${n}回目だよ`, undefined, `${n}回目だよ`, `${n}回目だってば`),
             value: 'teach',
-            reply: [t(`ああ、${n}回目か。……教えてくれて、ありがとう{ね}。`), ...after],
+            reply: [t(`ああ、そっちの時間で${n}回目の電話なん{だね}。……教えてくれて、ありがとう{ね}。`), ...after],
           },
           {
             label: me(`……${n}回目。覚えてないの？`, undefined, `${n}回目だよ。覚えてないの？`, `もう、${n}回目でしょ。忘れたの？`),
             value: 'tease',
-            reply: [t(`ふふ、${n}回目か。数は忘れても、話したことは覚え{てる}{よ}。`), ...after],
+            reply: [t(`ふふ、そっちの時間で${n}回目の電話なん{だね}。数は忘れても、話したことは覚え{てる}{よ}。`), ...after],
           },
         ]
       }
@@ -273,7 +312,7 @@ export const NODES: Record<string, StoryNode> = {
         {
           label: me(`これで${n}回目だね`, undefined, `これで${n}回目だね`, `もう${n}回目だね`),
           value: 'count',
-          reply: [t('もう、そんなになるんだ{ね}。……こういう時間が、あとで一番懐かしくなる{よ}。', '数えてくれてたんだ{ね}。重ねた時間は、ちゃんと残るもん{だよ}。', '数えてくれてたのかい。重ねた時間は、ちゃんと残るもん{だよ}。')],
+          reply: [t(`そっちの時間で、もう${n}回目の電話なん{だね}。……こういう時間が、あとで一番懐かしくなる{よ}。`, `そっちの時間で、${n}回目の電話なん{だね}。数えてくれてたんだ。重ねた時間は、ちゃんと残るもん{だよ}。`, `そっちの時間で、${n}回目の電話なん{だね}。重ねた時間は、ちゃんと残るもん{だよ}。`)],
         },
         {
           label: me('覚えててくれたんだ', undefined, '覚えててくれたんだ', 'さすが、覚えてるね'),
@@ -289,6 +328,8 @@ export const NODES: Record<string, StoryNode> = {
   /** 相手は、まさかこちらからかかってくるとは思っていない。驚いたあとは、いつもの会話へ */
   open4: {
     id: 'open4',
+    // 最初のあいさつは2択のまま（自由回答なし）
+    free: false,
     effect: 'voice',
     say: (c) => [c.relation ? t('……はい、もしもし？ ……どちらさま、ですか？') : t('……はい、もしもし？', undefined, '……はい、もしもし。', undefined, undefined)],
     choices: (c) => {
@@ -331,6 +372,8 @@ export const NODES: Record<string, StoryNode> = {
   // ===================== 1回目（初めての電話）／特別な相手 =====================
   open: {
     id: 'open',
+    // 最初のあいさつは2択のまま（自由回答なし）
+    free: false,
     effect: 'voice',
     say: () => [ag(t('もしもし？'), { parent: '……はい、もしもし？' })],
     choices: (c) =>
@@ -356,6 +399,8 @@ export const NODES: Record<string, StoryNode> = {
 
   intro: {
     id: 'intro',
+    // 最初のあいさつは2択のまま（自由回答なし）
+    free: false,
     say: (c) =>
       c.relation === PARENT
         ? [t('……この電話、どこからかけてるの？ なんだか、遠くから聞こえる。')]
@@ -450,6 +495,10 @@ export const NODES: Record<string, StoryNode> = {
         reply: [ag(t('{いい}{ね}。声がちょっと明るい。', undefined, 'それはよかった。声が弾んでる{ね}。', 'よかった。……10年後にも、いい日があるんだ{ね}。'), { kin: '{いい}{ね}。……そっちのいい日、こっちまで届いた気がする。', parent: '{いい}{ね}。声が、うれしそう{だよ}。' })],
       },
     ],
+    free: {
+      reply: (v) => [ag(t(`「${v}」な一日、か。……その一日も、きっとあとで懐かしくなる{よ}。`, undefined, `「${v}」な一日、か。……そういう日のことほど、覚え{てる}もん{だよ}。`, `「${v}」な一日なんだ。……10年後の今日のこと、聞けてうれしい。`), { kin: `「${v}」な一日、か。……昔の人の今日、聞けてうれしい{よ}。`, parent: `「${v}」な一日、か。……{いい}{ね}、聞かせてくれて。` })],
+      placeholder: '例：雨の音を聞いてた',
+    },
     next: 'topic',
   },
 
@@ -459,7 +508,18 @@ export const NODES: Record<string, StoryNode> = {
     question: (c) => TOPICS[c.topic].question,
     answerKey: 'topicYN',
     say: (c) => [TOPICS[c.topic].ask],
-    choices: (c) => [{ label: me('あるよ', undefined, 'あるある', 'あるよ、聞いて'), value: 'yes', next: 'topicInput' }, ...TOPICS[c.topic].others],
+    choices: (c) => [
+      { label: me('あるよ', undefined, 'あるある', 'あるよ、聞いて'), value: 'yes', next: 'topicInput' },
+      ...TOPICS[c.topic].others,
+      { label: me('それは、ひみつ', undefined, 'ひみつ', 'えー、ひみつ'), value: 'secret', reply: SECRET },
+    ],
+    // 自由回答は、その話題の答え（「あるよ」のあとに書くのと同じ）として受けとる
+    free: {
+      as: 'yes',
+      textKey: 'topicText',
+      reply: (v, c) => TOPICS[c.topic].inputReply(v),
+      placeholder: '例：帰り道の肉まん',
+    },
     next: afterTopic,
   },
 
@@ -498,6 +558,10 @@ export const NODES: Record<string, StoryNode> = {
         reply: [ag(t(`ひとりの時間も、ちゃんと${c.name}の時間{だよ}。`, undefined, 'ひとりで考えていたことも、あとで大事な思い出になる{よ}。', `ひとりの時間か。……ひとりでも、ちゃんと${c.name}{だよ}。`), { kin: `ひとりの時間か。……その時間があったから、こっちがいるのかも{ね}。`, parent: 'ひとりの時間も、大事{だよ}。……でも、たまには誰かに頼って{ね}。' })],
       },
     ],
+    free: {
+      reply: (v) => [ag(t(`${v}、か。……そういう人がいる毎日って、あとで懐かしくなる{よ}。`, undefined, `${v}、か。……そういう人のことは、ふと思い出すもん{だよ}。`, `${v}、か。……どんな人なんだろう。`), { kin: `${v}、か。……会ってみたかったな。`, parent: `${v}、か。……大事にして{ね}。` })],
+      placeholder: '例：となりの席の人',
+    },
     next: 'mood',
   },
 
@@ -511,8 +575,13 @@ export const NODES: Record<string, StoryNode> = {
       { label: me('ちょっと疲れた', 'ちょっと疲れたかな', '疲れた', 'もうクタクタ'), value: 'tired', reply: [ag(t('疲れたって言えるの、大事{だよ}。', undefined, '疲れた日は、早めに休むん{だよ}。', 'そっか。……無理しないで{ね}。'), { kin: '疲れてるのに、話してくれてありがとう{ね}。', parent: '疲れてるのに、ありがとう{ね}。……今日は、早く寝て{ね}。' })] },
       { label: me('なんとなく不安', 'なんとなく不安かな', 'なんか不安', 'なんか、そわそわする'), value: 'anxious', reply: [ag(t('そっか。不安な夜って、長く感じるよ{ね}。', undefined, 'そうかい。そういう夜も、ある{よ}。', 'そっか。……こっちも、不安な日はある{よ}。同じ{だね}。'), { kin: 'そっか。……こっちは、ちゃんと元気{だよ}。少しは安心してくれる？', parent: 'そっか。……だいじょうぶ。きっと、だいじょうぶ{だよ}。' })] },
       { label: me('わくわくしてる', 'わくわくしてるかも', 'わくわく', 'わくわくしてる！'), value: 'excited', reply: [ag(t('{いい}{ね}。電話越しでも伝わってくる。', undefined, 'それは{いい}{ね}。こっちまで若返る{よ}。', 'わくわくしてるんだ。……こっちまで、うれしい。'), { kin: 'わくわくしてるんだ。……こっちまで、うれしくなる。', parent: 'わくわくしてるんだ。……こっちまで、うれしくなる{よ}。' })] },
-      { label: me('よくわからない', 'よくわからないかな', 'よくわかんない', 'わかんないや'), value: 'unsure', reply: [ag(t('ひとことじゃ言えないこと、多いよ{ね}。', undefined, 'それでいいん{だよ}。', 'うん。……こっちも、よくわからない日ばっかり{だよ}。'), { kin: 'うん。……こっちも、そういう日ある{よ}。', parent: 'うん。……そういう日も、ある{よ}。' })] },
     ],
+    // 自由回答：ひとことで言えない気持ちとして受けとる（最後のメッセージは「よくわからない」の系統）
+    free: {
+      as: 'unsure',
+      reply: (v) => [ag(t(`「${v}」か。……ひとことじゃ言えない気持ちも、ちゃんと届いた{よ}。`, undefined, `「${v}」か。……それでいいん{だよ}。`, `「${v}」か。……こっちも、そういう日ある{よ}。`), { kin: `「${v}」か。……ちゃんと、聞いた{よ}。`, parent: `「${v}」……そっか。ちゃんと聞いた{よ}。` })],
+      placeholder: '例：ちょっとそわそわ',
+    },
     next: 'feeling',
   },
 
@@ -547,7 +616,17 @@ export const NODES: Record<string, StoryNode> = {
         '少しだけ画面から目を離して、まわりを見てみて。……こっちも、同じことをする{から}。',
       ), { kin: '少しだけ画面から目を離して、まわりを見てみて。……そっちの音、聞いてみたい。', parent: '少しだけ、まわりを見てみて。……そっちの景色、こっちからは見えない{から}。' }),
     ],
-    choices: () => [{ label: '（まわりを見てみた）', value: 'looked' }],
+    choices: () => [
+      { label: '（まわりを見てみた）', value: 'looked' },
+      { label: '（耳をすませてみた）', value: 'listened' },
+      { label: '（空を見上げてみた）', value: 'sky' },
+      { label: '（目を閉じてみた）', value: 'closed' },
+    ],
+    free: {
+      question: '見えたもの・聞こえたもの',
+      reply: (v) => [ag(t(`「${v}」……。こっちにも、少し届いた気がする{よ}。`, undefined, `「${v}」か。……ああ、目に浮かぶ{よ}。`), { kin: `「${v}」……。昔の景色って、そんななんだ。`, parent: `「${v}」か。……{いい}景色{だね}。` })],
+      placeholder: '例：遠くの踏切の音',
+    },
     next: 'nowscape2',
   },
 
@@ -610,7 +689,24 @@ export const NODES: Record<string, StoryNode> = {
           ),
         ].map((v) => ag(v, { kin: 'それで{いい}{よ}。いつか、ふと思い出してくれたら。', parent: 'それで{いい}{よ}。いつか、ふと思い出して。' })),
       },
+      {
+        label: me('この景色、覚えておきたいと思った', undefined, '覚えておきたいと思った', 'これ、覚えとこうって思った'),
+        value: 'keep',
+        reply: [
+          t(
+            'うん。今日の景色は、ちゃんとこっちまで届いてる{よ}。',
+            undefined,
+            '覚えておこうと思った景色は、不思議と、ずっと残るもん{だよ}。',
+            'じゃあ、こっちも覚えておく。……ふたりで覚えておこう。',
+            '覚えておこうとした気持ちごと、100年先まで残る{よ}。',
+          ),
+        ].map((v) => ag(v, { kin: 'うん。……その景色、こっちにも少し分けて{ね}。', parent: 'うん。……きっと、忘れない景色になる{よ}。' })),
+      },
     ],
+    free: {
+      reply: (v) => [ag(t(`「${v}」か。……その気持ちも、いつか懐かしくなる{よ}。`, undefined, `「${v}」か。……うん、懐かしいって、そういうもん{だよ}。`, `「${v}」……。今と未来が、つながった気がする。`), { kin: `「${v}」か。……こっちまで、少し懐かしくなった。`, parent: `「${v}」……そっか。{いい}言葉{だね}。` })],
+      placeholder: '例：ちょっと泣きそうになった',
+    },
     next: 'lowcard',
   },
 
@@ -678,7 +774,17 @@ export const NODES: Record<string, StoryNode> = {
         { label: me('またね', undefined, 'またね！', 'じゃ、またね'), value: 'bye', reply: [t('うん。また、いつか。', undefined, undefined, 'うん。……また、いつか。')] },
         { label: '（受話器を置く）', value: 'hangup' },
       ]
-      if (!forgetsCount(c)) return base
+      if (!forgetsCount(c))
+        return [
+          base[0],
+          base[1],
+          {
+            label: me('元気でね', undefined, '元気でね', '元気でいてよ'),
+            value: 'well',
+            reply: [ag(t('うん。そっちも、元気で{ね}。', undefined, 'ありがとう。そっちも、元気でいて{ね}。'), { kin: 'うん。……そっちも、元気で{ね}。', parent: 'ありがとう。……そっちも、元気で{ね}。' })],
+          },
+          base[2],
+        ]
       // 70歳を過ぎた自分には、あなたから気づかう言葉をかけられる
       return [
         {
@@ -694,6 +800,11 @@ export const NODES: Record<string, StoryNode> = {
         ...base.slice(0, 1),
         base[2],
       ]
+    },
+    free: {
+      question: '最後に伝えたこと',
+      reply: (v) => [ag(t(`「${v}」……うん。ちゃんと、受けとった{よ}。`, undefined, `「${v}」か。……ありがとう{ね}。`), { ninety: '……うん。……ありがとう{ね}。', kin: `「${v}」……うん。ちゃんと、受けとった{よ}。`, parent: `「${v}」……ありがとう。` })],
+      placeholder: '例：またね、未来の自分',
     },
     next: 'end',
   },
