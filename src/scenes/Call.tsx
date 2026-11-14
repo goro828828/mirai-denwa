@@ -33,7 +33,7 @@ type Pending =
   | null
 
 /** 自由回答の文字数 */
-const FREE_MAX = 30
+const FREE_MAX = 60
 
 function nextOf(node: StoryNode, c: CallContext): string | undefined {
   return typeof node.next === 'function' ? node.next(c) : node.next
