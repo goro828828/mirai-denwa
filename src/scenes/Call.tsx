@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { NODES, RECALL_CHANCE, freeDefault, recallFor, type Choice, type FreeDef, type InputDef, type StoryNode, type Variant } from '../story/script'
+import { NODES, RECALL_CHANCE, recallFor, type Choice, type InputDef, type StoryNode, type Variant } from '../story/script'
 import { DEFAULT_AGE, PARENT, callerLabel, cleanInput, resolveText, scriptFor, speak, tierFor, type CallContext, type PrevCall } from '../story/engine'
 import { pickTopic } from '../story/topics'
 import type { AnswerLog, Profile, WeatherInfo } from '../types'
@@ -28,12 +28,7 @@ interface Entry {
 type Pending =
   | { kind: 'choices'; node: StoryNode; choices: Choice[] }
   | { kind: 'input'; node: StoryNode; input: InputDef }
-  /** 選択肢のかわりに、自分の言葉で答える（4択＋自由回答の「＋1」） */
-  | { kind: 'free'; node: StoryNode; choices: Choice[]; free: FreeDef }
   | null
-
-/** 自由回答の文字数 */
-const FREE_MAX = 60
 
 function nextOf(node: StoryNode, c: CallContext): string | undefined {
   return typeof node.next === 'function' ? node.next(c) : node.next
@@ -251,28 +246,6 @@ export function CallScene({
     await runNode(c.next ?? nextOf(node, ctx.current))
   }
 
-  const submitFree = async (node: StoryNode, free: FreeDef) => {
-    inputRef.current?.blur()
-    const value = cleanInput(inputValue, FREE_MAX)
-    if (!value) return
-    setPending(null)
-    sound.click()
-    if (node.effect === 'listen') sound.duck(true)
-    push({ who: 'me', text: value })
-    if (node.answerKey) ctx.current.answers[node.answerKey] = free.as ?? 'free'
-    if (free.textKey) ctx.current.answers[free.textKey] = value
-    const q = questionOf(node, ctx.current) ?? free.question
-    if (q) answerLog.current.push({ key: node.answerKey ?? node.id, question: q, answer: value })
-    if (free.textKey) answerLog.current.push({ key: free.textKey, question: q ?? '', answer: value })
-    spend(UNIT_STEP)
-    await wait(400)
-    await say(free.reply(value, ctx.current))
-    if (free.textKey) await maybeRecall(free.textKey, 'input')
-    else if (free.as) await maybeRecall(node.id, free.as)
-    const next = free.next === undefined ? nextOf(node, ctx.current) : typeof free.next === 'function' ? free.next(ctx.current) : free.next
-    await runNode(next)
-  }
-
   const submitInput = async (node: StoryNode, input: InputDef, skip: boolean) => {
     // 回答したらキーボードを閉じて、画面を元の表示に戻す
     inputRef.current?.blur()
@@ -351,7 +324,7 @@ export function CallScene({
 
   // 入力欄が出たら、画面を動かさずにフォーカスする
   useEffect(() => {
-    if (pending?.kind === 'input' || pending?.kind === 'free') inputRef.current?.focus({ preventScroll: true })
+    if (pending?.kind === 'input') inputRef.current?.focus({ preventScroll: true })
   }, [pending])
 
   useEffect(() => {
@@ -447,63 +420,7 @@ export function CallScene({
                 {resolveText(c.label, ctx.current)}
               </button>
             ))}
-            {pending.node.free !== false && (
-              <button
-                type="button"
-                className="btn choice free-choice"
-                onClick={() => {
-                  sound.click()
-                  setInputValue('')
-                  setPending({ kind: 'free', node: pending.node, choices: pending.choices, free: pending.node.free || freeDefault })
-                }}
-              >
-                ✎ 自分の言葉で答える
-              </button>
-            )}
           </div>
-        )}
-        {pending?.kind === 'free' && (
-          <form
-            className="free-input"
-            onSubmit={(e) => {
-              e.preventDefault()
-              void submitFree(pending.node, pending.free)
-            }}
-          >
-            <label htmlFor="free" className="free-label">
-              自分の言葉で答える
-            </label>
-            <div className="free-row">
-              <input
-                id="free"
-                ref={inputRef}
-                className="text-input"
-                type="text"
-                enterKeyHint="send"
-                autoComplete="off"
-                maxLength={FREE_MAX}
-                placeholder={pending.free.placeholder ?? '思ったことを、そのまま'}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-              />
-              <button type="submit" className="btn primary small" disabled={!inputValue.trim()}>
-                伝える
-              </button>
-            </div>
-            <p className="char-count" aria-live="polite">
-              {[...inputValue].length}/{FREE_MAX}
-            </p>
-            <button
-              type="button"
-              className="btn ghost small"
-              onClick={() => {
-                sound.click()
-                setPending({ kind: 'choices', node: pending.node, choices: pending.choices })
-              }}
-            >
-              選択肢にもどる
-            </button>
-          </form>
         )}
         {pending?.kind === 'input' &&  (
           <form

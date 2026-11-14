@@ -2042,13 +2042,6 @@ button.cal-day.selected {
   color: #c0392b;
   font-weight: 700;
 }
-/* 4択のあとの「＋1」：自分の言葉で答える */
-.btn.choice.free-choice {
-  background: transparent;
-  border-style: dashed;
-  color: var(--on-bg);
-  justify-content: center;
-}
 /* 入力欄の字数（例：12/60） */
 .char-count {
   margin: -4px 2px 0 0;

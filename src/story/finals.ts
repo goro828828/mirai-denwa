@@ -35,8 +35,7 @@ const WHO: Record<string, string> = { family: '家族と', friend: '友だちと
 export function finalMessage(c: CallContext): Variant {
   const name = c.name
   const who = WHO[c.answers.people] ?? ''
-  // カードに印字されるので、長い言葉（自由回答で60字まで書ける）は入れない
-  const passion = c.topic === 'passion' && c.answers.topicText && c.answers.topicText.length <= 20 ? `${c.answers.topicText}も、` : ''
+  const passion = c.topic === 'passion' && c.answers.topicText ? `${c.answers.topicText}も、` : ''
 
   // t(10年後, 20〜30年後, 40〜60年後, 10年前, 100年後) ＋ 80代・90代・子孫
   switch (feelingCategory(c)) {
