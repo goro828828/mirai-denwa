@@ -490,6 +490,9 @@ export function CallScene({
                 伝える
               </button>
             </div>
+            <p className="char-count" aria-live="polite">
+              {[...inputValue].length}/{FREE_MAX}
+            </p>
             <button
               type="button"
               className="btn ghost small"
@@ -530,6 +533,9 @@ export function CallScene({
                 伝える
               </button>
             </div>
+            <p className="char-count" aria-live="polite">
+              {[...inputValue].length}/{pending.input.maxLength}
+            </p>
             <button type="button" className="btn ghost small" onClick={() => void submitInput(pending.node, pending.input, true)}>
               書かずに答える
             </button>

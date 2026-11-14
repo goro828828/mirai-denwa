@@ -2049,3 +2049,11 @@ button.cal-day.selected {
   color: var(--on-bg);
   justify-content: center;
 }
+/* 入力欄の字数（例：12/60） */
+.char-count {
+  margin: -4px 2px 0 0;
+  text-align: right;
+  font-size: 12px;
+  color: var(--sub);
+  font-variant-numeric: tabular-nums;
+}
