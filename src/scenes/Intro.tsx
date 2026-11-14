@@ -1,8 +1,8 @@
 import { MAX_PLAYER_AGE, MIN_PLAYER_AGE } from '../story/engine'
 import type { WeatherKind } from '../types'
-import { TitleLandscape, skyIsDark, type Season } from '../components/TitleLandscape'
+import { TitleLandscape, groundHeightFor, skyIsDark, type Season } from '../components/TitleLandscape'
 import type { TimeOfDay } from '../lib/weather'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { CardForm, CardFront, GENDER_LABEL, LIFESTAGE_LABEL, type FormField } from '../components/PhoneCard'
 import { PREFECTURES, REGIONS } from '../data/prefectures'
 import type { Gender, LifeStage, Profile } from '../types'
@@ -25,14 +25,36 @@ export function TitleScene({
   /** 背景の風景（時間帯・天気・季節） */
   landscape: { tod: TimeOfDay; weather: WeatherKind | null; season: Season }
 }) {
+  // 下のボタン欄の高さ（登録内容の行が出るかどうか・画面の大きさで変わる）に合わせて、
+  // 電話ボックスの足もとが、ボタン欄より少し上に来るように地面を動かす
+  const sectionRef = useRef<HTMLElement>(null)
+  const stackRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const fit = () => {
+      const sec = sectionRef.current
+      const stack = stackRef.current
+      if (!sec || !stack) return
+      const top = stack.getBoundingClientRect().top
+      sec.style.setProperty('--tl-ground-h', `${groundHeightFor(window.innerWidth, window.innerHeight, top - 18)}px`)
+    }
+    fit()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null
+    if (stackRef.current) ro?.observe(stackRef.current)
+    window.addEventListener('resize', fit)
+    return () => {
+      ro?.disconnect()
+      window.removeEventListener('resize', fit)
+    }
+  }, [saved])
+
   return (
-    <section className={`scene title-scene${skyIsDark(landscape.tod, landscape.weather) ? ' title-dark' : ' title-light'}`}>
+    <section ref={sectionRef} className={`scene title-scene${skyIsDark(landscape.tod, landscape.weather) ? ' title-dark' : ' title-light'}`}>
       <TitleLandscape {...landscape} />
       <div className="title-block">
         <p className="title-eyebrow">いつか懐かしくなる今日を、あなたはどう過ごしますか。</p>
         <h1 className="title app-name">みらい電話</h1>
       </div>
-      <div className="stack">
+      <div className="stack" ref={stackRef}>
         <div className="title-actions">
           <button type="button" className="btn primary" onClick={onStart}>
             はじめる

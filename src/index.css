@@ -2050,3 +2050,36 @@ button.cal-day.selected {
   color: var(--sub);
   font-variant-numeric: tabular-nums;
 }
+/* タイトル画面：地面の高さは、ボタン欄に合わせて Intro.tsx が決める（電話ボックスが隠れないように） */
+.title-scene .tl-ground {
+  height: var(--tl-ground-h, 60%);
+}
+/* 「通話履歴（1）」が2行に折り返して、ボタン欄が高くならないように */
+.title-scene > .stack .title-actions {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.title-scene > .stack .title-actions .btn.ghost {
+  white-space: nowrap;
+  padding-left: 18px;
+  padding-right: 18px;
+}
+.title-scene > .stack .title-actions .btn {
+  white-space: nowrap;
+}
+/* 背の低いスマホ：タイトルとボタン欄を詰めて、電話ボックスの居場所をつくる */
+@media (max-height: 640px) {
+  .title-scene .title-block {
+    margin-top: 0;
+  }
+  .title-scene .app-name {
+    font-size: 40px;
+  }
+  .title-scene > .stack {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .title-scene > .stack .note {
+    font-size: 10px;
+    line-height: 1.5;
+  }
+}

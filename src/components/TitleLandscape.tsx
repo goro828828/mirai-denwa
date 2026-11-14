@@ -139,6 +139,19 @@ function Crow({ cls, y, scale }: { cls: string; y: number; scale: number }) {
   )
 }
 
+/**
+ * 電話ボックスの足もとが、画面の上から targetY（px）に来る地面の高さ（px）。
+ * 地面の絵は viewBox「0 380 1000 520」を xMidYMin slice で敷いている。
+ */
+export function groundHeightFor(W: number, H: number, targetY: number): number {
+  const foot = BASE - 380 // 地面の絵の上端から、足もとまで
+  // 絵の高さで倍率が決まるとき：足もと = H - h + foot * h / 520
+  let h = (H - targetY) / (1 - foot / 520)
+  // 絵の幅で倍率が決まるとき：足もと = H - h + foot * W / 1000
+  if (h < (520 * W) / 1000) h = H - targetY + (foot * W) / 1000
+  return Math.min(H * 0.85, Math.max(H * 0.5, h))
+}
+
 export function TitleLandscape({
   tod,
   weather,
