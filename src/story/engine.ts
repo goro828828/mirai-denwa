@@ -57,12 +57,15 @@ export function pickYears(age = DEFAULT_AGE, rand = Math.random): number {
 
 /**
  * これまでの通話履歴の件数から、今回つながる相手を決める。
- * 1〜3回目は10年後。4回目以降は10〜90年後（100歳まで）。
+ * 1回目は10年後、2回目は20年後、3回目は30年後（100歳を超えるときは、超えない範囲でいちばん先）。4回目以降は10〜90年後（100歳まで）。
  * 10の倍数の回（10・20・30…回目）は特別：100年後の自分か、生まれる10年前の親（半々）。
  * 戻り値の relation が「親」なら、親につながる。
  */
 export function pickYearsFor(historyCount: number, age = DEFAULT_AGE, rand = Math.random): { years: number; relation?: string } {
-  if (historyCount < FIXED_FIRST_CALLS) return { years: 10 }
+  if (historyCount < FIXED_FIRST_CALLS) {
+    const want = (historyCount + 1) * 10
+    return { years: Math.max(10, Math.min(want, Math.floor((MAX_AGE - age) / 10) * 10)) }
+  }
   if (isSpecialCall(historyCount + 1)) return rand() < 0.5 ? { years: parentYears(age), relation: PARENT } : { years: CENTURY_YEARS }
   return { years: pickYears(age, rand) }
 }
@@ -72,13 +75,13 @@ export function isSpecialCall(callIndex: number): boolean {
   return callIndex > FIXED_FIRST_CALLS && callIndex % SPECIAL_EVERY === 0
 }
 
-/** 1〜3回目は10年後に固定 */
+/** 1〜3回目は相手が決まっている（10年後・20年後・30年後） */
 export const FIXED_FIRST_CALLS = 3
 
 /**
  * 自分から年代を選んでかけられる回（イベント）
  * 10回ごとの区切り（1〜10回目、11〜20回目…）の中で、必ず1回だけ起きる。
- * 区切りの10回目は特別な回なので、1〜9回目のどこか（最初の区切りは、10年後に固定の1〜3回目を除いた4〜9回目）から抽選する。
+ * 区切りの10回目は特別な回なので、1〜9回目のどこか（最初の区切りは、相手が決まっている1〜3回目を除いた4〜9回目）から抽選する。
  * 抽選は端末ごとの種（seed）から決まるので、同じ区切りの中で結果が変わらない。
  */
 export const DIAL_EVENT_SPAN = 10

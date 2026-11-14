@@ -220,7 +220,7 @@ export default function App() {
     sound.unlock()
     sound.click()
     setRecord(null)
-    // 1〜3回目は10年後。4回目以降は10〜60年後、履歴が10件たまるごとに次の1回は10年前か100年後（自動で抽選）
+    // 1回目は10年後・2回目は20年後・3回目は30年後。4回目以降は10〜90年後、履歴が10件たまるごとに次の1回は10年前か100年後（自動で抽選）
     setCallIndex(history.length + 1)
     setRelation(undefined)
     setNameEvent(null)
