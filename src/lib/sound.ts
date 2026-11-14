@@ -363,6 +363,43 @@ class SoundManager {
     for (let i = 0; i < 3; i++) this.tone(1200, i * 0.18, 0.1, 0.1, 'square')
   }
 
+  /** 記憶を消すときの音（キュイーン……と下がっていく） */
+  erase() {
+    if (!this.ctx) return
+    const ctx = this.ctx
+    const t0 = ctx.currentTime
+    const o = ctx.createOscillator()
+    const g = ctx.createGain()
+    o.type = 'triangle'
+    o.frequency.setValueAtTime(1800, t0)
+    o.frequency.exponentialRampToValueAtTime(120, t0 + 1.6)
+    g.gain.setValueAtTime(0, t0)
+    g.gain.linearRampToValueAtTime(0.12, t0 + 0.05)
+    g.gain.linearRampToValueAtTime(0, t0 + 1.6)
+    o.connect(g).connect(this.sfxBus)
+    o.start(t0)
+    o.stop(t0 + 1.7)
+  }
+
+  /** 受話器の向こうの、調子っぱずれな歌（このアプリのための短いメロディ。既存の曲ではない） */
+  song(): number {
+    // [半音（ラ=0）, 拍]
+    const notes: [number, number][] = [
+      [0, 1], [0, 0.5], [3, 0.5], [5, 1], [3, 1], [7, 1.5], [5, 0.5], [3, 1], [0, 1],
+      [-2, 1], [0, 0.5], [3, 0.5], [5, 1], [8, 1], [7, 1], [5, 0.5], [3, 0.5], [0, 2],
+    ]
+    const beat = 0.32
+    let t = 0
+    for (let r = 0; r < 2; r++)
+      for (const [n, b] of notes) {
+        const f = 220 * 2 ** ((n + (r ? 1 : 0)) / 12)
+        this.tone(f, t, b * beat * 0.9, 0.09, 'square')
+        this.tone(f / 2, t, b * beat * 0.9, 0.05, 'triangle')
+        t += b * beat
+      }
+    return t
+  }
+
   stopLoops() {
     for (const s of [...this.loops]) s()
   }

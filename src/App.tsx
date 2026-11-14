@@ -12,6 +12,8 @@ import { CallScene, type CallResult } from './scenes/Call'
 import { HistoryScene, ResultScene } from './scenes/Outro'
 import { LostScene, ReturnScene } from './scenes/Prologue'
 import { AboutScene } from './scenes/About'
+import { AnomalyScene } from './scenes/Anomaly'
+import { nameEventOf, type NameEvent } from './story/forbidden'
 import { SettingsDialog } from './components/Settings'
 import { DEFAULT_AGE, isDialEvent, pickYearsFor, type PrevCall } from './story/engine'
 import { pickIllustration } from './lib/illustrations'
@@ -37,7 +39,7 @@ function landscapePreview(): { season?: Season; tod?: TimeOfDay; weather?: Weath
   }
 }
 
-type Scene = 'about' | 'title' | 'pickup' | 'lost' | 'fill' | 'phone' | 'call' | 'eject' | 'return' | 'result' | 'history'
+type Scene = 'about' | 'title' | 'pickup' | 'lost' | 'fill' | 'phone' | 'call' | 'anomaly' | 'eject' | 'return' | 'result' | 'history'
 
 /** 自分から年代を選んでかけるイベントの抽選に使う、端末ごとの種 */
 const DIAL_SEED_KEY = storeKey('mirai-denwa:dial-seed:v1')
@@ -127,6 +129,10 @@ export default function App() {
   const [dialed, setDialed] = useState(false)
   /** 子孫が出たとき（「孫」など） */
   const [relation, setRelation] = useState<string | undefined>(undefined)
+  /** 名前の欄の言葉で起きるイベント（時間管理局／1145年14月19日） */
+  const [nameEvent, setNameEvent] = useState<NameEvent | null>(null)
+  /** 記憶を消されたあと、名前の記入からやり直すときの書きかけ */
+  const [fillAgain, setFillAgain] = useState<Partial<Profile> | null>(null)
   /** 登録内容（2回目以降は、いちいち書き直さずに使う） */
   const [saved, setSaved] = useState<Profile | null>(() => completeProfile(loadDraft<Profile>()))
   /** 記入画面を「登録内容の変更だけ」で開いたとき true */
@@ -217,6 +223,8 @@ export default function App() {
     // 1〜3回目は10年後。4回目以降は10〜60年後、履歴が10件たまるごとに次の1回は10年前か100年後（自動で抽選）
     setCallIndex(history.length + 1)
     setRelation(undefined)
+    setNameEvent(null)
+    setFillAgain(null)
     setPrev(prevFrom(history[0]))
     setNotice('')
     setPrologue(history.length === 0 && !prologueSeen())
@@ -238,6 +246,29 @@ export default function App() {
   }
 
   const onFilled = (p: Profile) => {
+    setFillAgain(null)
+    // 名前に差別語・暴言・下ネタや、特定の語録が入っていたら、ふつうの通話ではなく特別なイベントになる（story/forbidden.ts）
+    const ne = nameEventOf(p.nickname)
+    if (ne && !editOnly) {
+      // その名前は登録内容に残さない（次にカードを拾ったとき、名前から書き直す）
+      saveDraft({ ...p, nickname: '' })
+      setSaved(null)
+      setProfile({ ...p, nickname: '' })
+      setNameEvent(ne)
+      setDialed(false)
+      setRelation(undefined)
+      setYears(1000)
+      requestWeather(p.prefCode)
+      if (prologue || reduced) return setScene('phone')
+      setWarp('out')
+      window.setTimeout(() => {
+        setScene('phone')
+        setWarp('in')
+        window.setTimeout(() => setWarp('none'), 1200)
+      }, 800)
+      return
+    }
+    setNameEvent(null)
     saveDraft(p)
     setSaved(p)
     if (editOnly) {
@@ -447,15 +478,19 @@ export default function App() {
         {scene === 'lost' && <LostScene landscape={{ ...landscape, weather: weather?.kind ?? landscape.weather }} reduced={reduced} onDone={() => setScene('fill')} />}
         {scene === 'fill' && (
           <FillScene
-            lead={prologue && !editOnly ? '電話の台でカードを裏返すと、名前を書く欄があった。' : undefined} initial={saved ?? loadDraft<Profile>()} onPrefChange={requestWeather} onDone={onFilled} submitLabel={editOnly ? '保存する' : prologue ? 'このカードで電話をかける' : undefined} />
+            key={fillAgain ? 'again' : 'fill'}
+            lead={fillAgain ? '……あれ？ いま、何をしていたんだっけ。カードの名前の欄が、まっさらになっている。' : prologue && !editOnly ? '電話の台でカードを裏返すと、名前を書く欄があった。' : undefined}
+            initial={fillAgain ?? saved ?? loadDraft<Profile>()} onPrefChange={requestWeather} onDone={onFilled} submitLabel={editOnly ? '保存する' : prologue ? 'このカードで電話をかける' : undefined} />
         )}
         {scene === 'phone' && profile && (
           <PhoneScene
             profile={profile}
             weather={weather}
             years={years}
-            dialMode={dialed}
+            dialMode={dialed && !nameEvent}
+            fixedTarget={nameEvent === 'inmu' ? '11451419' : undefined}
             onConnected={(to) => {
+              if (nameEvent) return setScene('anomaly')
               if (to) {
                 setYears(to.years)
                 setRelation(to.relation)
@@ -466,6 +501,24 @@ export default function App() {
           />
         )}
         {scene === 'call' && profile && <CallScene profile={profile} weather={weather ?? null} years={years} callIndex={callIndex} prev={prev} relation={relation} dialed={dialed} reduced={reduced} onEnd={onCallEnd} />}
+        {scene === 'anomaly' && nameEvent && (
+          <AnomalyScene
+            kind={nameEvent}
+            reduced={reduced}
+            onWipe={() => {
+              clearHistory()
+              setHistory([])
+            }}
+            onDone={() => {
+              const kind = nameEvent
+              setNameEvent(null)
+              if (kind === 'inmu') return toTitle()
+              // 記憶を消されて、名前を書くところへ戻る
+              setFillAgain(profile ? { ...profile, nickname: '' } : {})
+              setScene('fill')
+            }}
+          />
+        )}
         {scene === 'eject' && record && (
           <EjectScene
             record={record}

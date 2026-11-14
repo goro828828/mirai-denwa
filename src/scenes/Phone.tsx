@@ -34,7 +34,10 @@ export function PhoneScene({
   onConnected,
   onManualWeather,
   dialMode = false,
+  fixedTarget,
 }: {
+  /** ダイヤルする日付を固定するとき（8けた。名前で起きるイベントの「1145年14月19日」など） */
+  fixedTarget?: string
   /** 自分から年代を選んでかける回 */
   dialMode?: boolean
   profile: Profile
@@ -97,7 +100,7 @@ export function PhoneScene({
     setStage('dialing')
     // ◯年後の今日へダイヤル
     const d = new Date()
-    const target = `${d.getFullYear() + years}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+    const target = fixedTarget ?? `${d.getFullYear() + years}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
     setLcd('')
     for (let i = 0; i < target.length; i++) {
       if (!alive.current) return

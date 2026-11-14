@@ -2007,3 +2007,33 @@ button.cal-day.selected {
   font-size: clamp(44px, 13vw, 60px);
   letter-spacing: 0.08em;
 }
+
+/* ---------- 名前の欄の言葉で起きる通話（時間管理局／1145年14月19日） ---------- */
+.erase-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: #efe2c6;
+  pointer-events: none;
+  animation: erase-flash 1.8s ease-in forwards;
+}
+@keyframes erase-flash {
+  0% { opacity: 0; }
+  20% { opacity: 0.9; }
+  35% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+.anomaly-bureau .call-name {
+  letter-spacing: 0.06em;
+}
+.anomaly-inmu .bubble.future {
+  animation: fadeIn 0.5s ease both, inmu-shake 0.5s ease-in-out 0.5s 2;
+}
+@keyframes inmu-shake {
+  25% { transform: rotate(-1.5deg); }
+  75% { transform: rotate(1.5deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .erase-flash { animation-duration: 0.01s; }
+  .anomaly-inmu .bubble.future { animation: none; }
+}
