@@ -24,6 +24,7 @@ import { PARENT, type CallContext } from './engine'
 import { ag, me, t, type Text, type Variant } from './text'
 import { TOPICS, TOPIC_NOUN } from './topics'
 import { finalMessage } from './finals'
+import { EVENT_NODES, MIDNIGHT, MIDNIGHT_BYE, afterGreeting, afterNowscape, afterSky } from './events'
 
 export type { Text, Variant } from './text'
 export { ag, me, t } from './text'
@@ -43,6 +44,8 @@ export interface InputDef {
   prompt: string
   placeholder: string
   maxLength: number
+  /** monthday：月と日を選ぶ（値は「03-14」） */
+  kind?: 'text' | 'monthday'
 }
 
 export interface StoryNode {
@@ -172,7 +175,7 @@ export const NODES: Record<string, StoryNode> = {
       { label: 'まあまあかな', value: 'soso', reply: [t('まあまあ、か。それくらいが、ちょうど{いい}{よ}。')] },
       { label: 'ちょっと疲れてた', value: 'tired', reply: [t('そっか。今日は、ゆっくり話そう{ね}。')] },
     ],
-    next: 'memo2',
+    next: afterGreeting('memo2'),
   },
 
   /** 前回の電話を、もう懐かしい思い出として語る（選択肢なし） */
@@ -282,7 +285,7 @@ export const NODES: Record<string, StoryNode> = {
         },
       ]
     },
-    next: 'sky',
+    next: afterGreeting('sky'),
   },
 
   // ===================== 自分から年代を選んでかけた回 =====================
@@ -408,9 +411,9 @@ export const NODES: Record<string, StoryNode> = {
         if (w.kind === 'clear') return ag(t('虫の声が聞こえる。……この夜、知っ{てる}気がする。', undefined, '虫の声が聞こえる{ね}。こういう夜を、いくつも過ごしてきた{よ}。', '虫の声が聞こえる。……10年後の夜も、こんな感じなんだ。'), { kin: '虫の声が聞こえる。……昔の夜って、こんな音がしてたんだ。', parent: '虫の声がする。……そっちも、夜{だね}。' })
         return ag(t('静かな空気{だね}。……こういう日、あった気がする。', undefined, '静かな日{だね}。こういう日のことも、覚え{てる}もん{だよ}。', '静かな空気{だね}。……そっちも、くもり？'), { kin: '静かな空気{だね}。……昔の日も、こんなふうに静かだったんだ。', parent: '静かな空気{だね}。……そっちは、どんな町なんだろう。' })
       })()
-      return [line, ...agingLine(c)]
+      return [...(c.ev?.midnight ? [MIDNIGHT] : []), line, ...agingLine(c)]
     },
-    next: 'day',
+    next: afterSky,
   },
 
   day: {
@@ -611,7 +614,7 @@ export const NODES: Record<string, StoryNode> = {
         ].map((v) => ag(v, { kin: 'それで{いい}{よ}。いつか、ふと思い出してくれたら。', parent: 'それで{いい}{よ}。いつか、ふと思い出して。' })),
       },
     ],
-    next: 'lowcard',
+    next: afterNowscape,
   },
 
   lowcard: {
@@ -648,6 +651,7 @@ export const NODES: Record<string, StoryNode> = {
     effect: 'final',
     say: (c) => [
       finalMessage(c),
+      ...(c.ev?.midnight ? [MIDNIGHT_BYE] : []),
       c.script === 'dialed'
         ? c.relation
           ? t(`電話をくれて、ありがとう。……${c.name}の声、ずっと覚えておく{よ}。`)
@@ -698,3 +702,5 @@ export const NODES: Record<string, StoryNode> = {
     next: 'end',
   },
 }
+
+Object.assign(NODES, EVENT_NODES)

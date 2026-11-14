@@ -112,7 +112,8 @@ export async function renderCardPng(r: CallRecord): Promise<Blob> {
 
   // 左の帯
   const bandW = 150
-  ctx.fillStyle = C.band
+  // 節目の回（50・100…回目）のカードは、金色の帯
+  ctx.fillStyle = r.milestone ? MILESTONE_BAND : C.band
   ctx.fillRect(cx, cy, bandW, ch)
   ctx.fillStyle = C.bandInk
   ctx.font = `500 40px ${FONT}`
@@ -163,7 +164,7 @@ export async function renderCardPng(r: CallRecord): Promise<Blob> {
 
   ctx.fillStyle = C.ink
   ctx.font = `700 62px ${FONT}`
-  ctx.fillText('未来の自分から、着信です。', left, cy + 140)
+  ctx.fillText(cardTitle(r), left, cy + 140)
 
   ctx.fillStyle = C.sub
   ctx.font = `400 40px ${FONT}`
@@ -238,4 +239,11 @@ export function cardFileName(r: CallRecord): string {
   const d = new Date(r.createdAt)
   const p = (n: number) => String(n).padStart(2, '0')
   return `mirai-call-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.png`
+}
+
+/** 節目の回のカードの帯の色 */
+export const MILESTONE_BAND = '#b08a3e'
+/** カードの見出し（節目の回は「50回目の、記念の着信です。」） */
+export function cardTitle(r: CallRecord): string {
+  return r.milestone ? `${r.milestone}回目の、記念の着信です。` : '未来の自分から、着信です。'
 }

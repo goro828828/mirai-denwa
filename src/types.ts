@@ -56,4 +56,6 @@ export interface CallRecord {
   relation?: string
   /** 自分から年代を選んでかけた回 */
   dialed?: boolean
+  /** 節目の回（50・100・200…回目） */
+  milestone?: number
 }

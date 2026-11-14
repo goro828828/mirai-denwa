@@ -5,7 +5,8 @@ import { findPref } from './data/prefectures'
 import { ambientFor, fetchWeather, fetchWeatherAt, isDaytime, timeOfDay } from './lib/weather'
 import { getPosition } from './lib/location'
 import { sound } from './lib/sound'
-import { addHistory, clearHistory, deleteHistory, loadDraft, loadHistory, loadSettings, saveDraft, saveSettings, type Settings } from './lib/storage'
+import { addCapsule, addHistory, clearHistory, deleteHistory, loadBirthday, loadCapsules, loadDraft, loadHistory, loadSettings, markCapsulesDelivered, saveBirthday, saveDraft, saveSettings, type Capsule, type Settings } from './lib/storage'
+import { LetterDialog } from './components/LetterDialog'
 import { FillScene, PickupScene, TitleScene } from './scenes/Intro'
 import { EjectScene, PhoneScene } from './scenes/Phone'
 import { CallScene, type CallResult } from './scenes/Call'
@@ -15,7 +16,7 @@ import { AboutScene } from './scenes/About'
 import { AnomalyScene } from './scenes/Anomaly'
 import { nameEventOf, type NameEvent } from './story/forbidden'
 import { SettingsDialog } from './components/Settings'
-import { DEFAULT_AGE, isDialEvent, pickYearsFor, type PrevCall } from './story/engine'
+import { CENTENARIAN_CALL, DEFAULT_AGE, isDialEvent, milestoneOf, pickYearsFor, type CallEvents, type PrevCall } from './story/engine'
 import { pickIllustration } from './lib/illustrations'
 import { seasonOf, type Season } from './components/TitleLandscape'
 import type { TimeOfDay } from './lib/weather'
@@ -82,6 +83,56 @@ function markPrologueSeen() {
   }
 }
 
+/** その回に重なる出来事を決める（真夜中・季節の節目は、通話の画面で決める） */
+function eventsFor(history: CallRecord[], dialed: boolean, now = new Date()): CallEvents {
+  const callIndex = history.length + 1
+  const sameDay = (iso: string) => {
+    const d = new Date(iso)
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+  }
+  const last = history[0] ? new Date(history[0].createdAt) : null
+  const gapDays = last ? Math.floor((now.getTime() - last.getTime()) / 864e5) : 0
+  const n = milestoneOf(callIndex)
+  let milestone: CallEvents['milestone']
+  if (n && history.length) {
+    const first = new Date(history[history.length - 1].createdAt)
+    const words: string[] = []
+    for (const r of history) {
+      const w = r.answers.find((a) => a.key === 'topicText')?.answer
+      if (w && w !== '（書かなかった）' && !words.includes(w)) words.push(w)
+      if (words.length >= 3) break
+    }
+    milestone = {
+      n,
+      firstDate: `${first.getFullYear()}年${first.getMonth() + 1}月${first.getDate()}日`,
+      days: Math.max(1, Math.floor((now.getTime() - first.getTime()) / 864e5)),
+      words,
+    }
+  }
+  return {
+    // 4回目（初回から数えて）は100歳の自分。誕生日をたずねるのは、この1回だけ
+    askBirthday: callIndex === CENTENARIAN_CALL && !dialed && !loadBirthday(),
+    // タイムカプセルは、6・16・26…回目にすすめる
+    capsule: callIndex % 10 === 6,
+    // 同じ日に2回記録したあとの、3回目の電話だけ混線する
+    crossed: history.filter((r) => sameDay(r.createdAt)).length === 2,
+    longAgoDays: callIndex >= 2 && gapDays >= 30 ? gapDays : undefined,
+    milestone,
+  }
+}
+
+/** まだ届いていないタイムカプセルのうち、届く日をすぎたもの（?letter をつけると、日付に関係なくすべて） */
+function dueCapsules(): Capsule[] {
+  let force = false
+  try {
+    force = new URLSearchParams(location.search).has('letter')
+  } catch {
+    /* noop */
+  }
+  const now = Date.now()
+  return loadCapsules().filter((c) => !c.delivered && (force || new Date(c.deliverAt).getTime() <= now))
+}
+
 /** 4項目すべて記入済みなら、登録内容として使う */
 function completeProfile(p: Partial<Profile>): Profile | null {
   return p.nickname && p.gender && p.age && p.prefCode && p.lifestage ? (p as Profile) : null
@@ -131,6 +182,10 @@ export default function App() {
   const [relation, setRelation] = useState<string | undefined>(undefined)
   /** 名前の欄の言葉で起きるイベント（時間管理局／1145年14月19日） */
   const [nameEvent, setNameEvent] = useState<NameEvent | null>(null)
+  /** その回に重なる出来事（100歳の自分の誕生日・タイムカプセル・混線・久しぶり・節目） */
+  const [callEvents, setCallEvents] = useState<CallEvents>({})
+  /** 届いたタイムカプセル（1年前の自分からの手紙） */
+  const [letters, setLetters] = useState<Capsule[]>(() => dueCapsules())
   /** 記憶を消されたあと、名前の記入からやり直すときの書きかけ */
   const [fillAgain, setFillAgain] = useState<Partial<Profile> | null>(null)
   /** 登録内容（2回目以降は、いちいち書き直さずに使う） */
@@ -286,6 +341,7 @@ export default function App() {
     const cheat = p.nickname.trim() === '開発者' && p.prefCode === '01' && p.age === 20
     const ev = cheat || isDialEvent(history.length + 1, dialSeed())
     setDialed(ev)
+    setCallEvents(eventsFor(history, ev))
     // 自分からかける回と、10回に1回の特別な回（100年後の自分／生まれる10年前の親）は重ならない
     const pick = pickYearsFor(history.length, p.age ?? DEFAULT_AGE)
     setYears(ev ? 10 : pick.years)
@@ -320,14 +376,17 @@ export default function App() {
         age: profile.age,
         relation,
         dialed: dialed || undefined,
+        milestone: callEvents.milestone?.n,
       }
+      if (r.birthday) saveBirthday(r.birthday)
+      if (r.capsule) addCapsule(r.capsule)
       rec.illustration = pickIllustration(rec)
       setSaveFailed(!addHistory(rec))
       setHistory(loadHistory())
       setRecord(rec)
       setScene('eject')
     },
-    [profile, weather, years, relation, dialed],
+    [profile, weather, years, relation, dialed, callEvents],
   )
 
   const chooseSky = (kind: WeatherKind) => {
@@ -500,7 +559,7 @@ export default function App() {
             onManualWeather={chooseSky}
           />
         )}
-        {scene === 'call' && profile && <CallScene profile={profile} weather={weather ?? null} years={years} callIndex={callIndex} prev={prev} relation={relation} dialed={dialed} reduced={reduced} onEnd={onCallEnd} />}
+        {scene === 'call' && profile && <CallScene profile={profile} weather={weather ?? null} years={years} callIndex={callIndex} prev={prev} relation={relation} dialed={dialed} ev={callEvents} reduced={reduced} onEnd={onCallEnd} />}
         {scene === 'anomaly' && nameEvent && (
           <AnomalyScene
             kind={nameEvent}
@@ -554,6 +613,17 @@ export default function App() {
       </main>
 
       {warp !== 'none' && <div className={`warp-overlay ${warp}`} aria-hidden="true" />}
+
+      {scene === 'title' && letters.length > 0 && (
+        <LetterDialog
+          letters={letters}
+          onClose={() => {
+            sound.click()
+            markCapsulesDelivered(letters.map((l) => l.id))
+            setLetters([])
+          }}
+        />
+      )}
 
       <SettingsDialog
         open={settingsOpen}

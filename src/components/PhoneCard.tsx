@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import type { CallRecord, Gender, LifeStage } from '../types'
 import { findPref } from '../data/prefectures'
 import { formatDateTime, weatherText } from '../lib/format'
-import { TOTAL_UNITS } from '../lib/cardImage'
+import { MILESTONE_BAND, TOTAL_UNITS, cardTitle } from '../lib/cardImage'
 import { callerLabel } from '../story/engine'
 import { ILLUSTRATIONS, illustrationOf } from '../lib/illustrations'
 
@@ -30,9 +30,9 @@ function Holes({ used }: { used: number }) {
   )
 }
 
-function Band() {
+function Band({ gold = false }: { gold?: boolean }) {
   return (
-    <div className="pc-band" aria-hidden="true">
+    <div className="pc-band" aria-hidden="true" style={gold ? { background: MILESTONE_BAND } : undefined}>
       <span className="pc-band-text">未来行きテレフォンカード</span>
       <span className="pc-band-unit">
         <b>{TOTAL_UNITS}</b>
@@ -139,7 +139,7 @@ export function CardPrinted({ record, printedChars }: PrintedProps) {
   const pref = findPref(record.prefCode)?.name ?? record.prefName
   return (
     <div className="pc pc-printed">
-      <Band />
+      <Band gold={!!record.milestone} />
       <div className="pc-body pc-printed-body">
         <span
           className="pc-illust-print"
@@ -148,7 +148,7 @@ export function CardPrinted({ record, printedChars }: PrintedProps) {
           // 中身はアプリ内で定義した固定のSVGだけ（入力内容は含まない）
           dangerouslySetInnerHTML={{ __html: ILLUSTRATIONS[illustrationOf(record)].svg }}
         />
-        <p className="pc-printed-title">未来の自分から、着信です。</p>
+        <p className="pc-printed-title">{cardTitle(record)}</p>
         <p className="pc-printed-date">{formatDateTime(record.createdAt)} 通話</p>
         <dl className="pc-printed-fields">
           <dt>なまえ</dt>

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NODES, RECALL_CHANCE, recallFor, type Choice, type InputDef, type StoryNode, type Variant } from '../story/script'
-import { DEFAULT_AGE, PARENT, callerLabel, cleanInput, resolveText, scriptFor, speak, tierFor, type CallContext, type PrevCall } from '../story/engine'
+import { DEFAULT_AGE, PARENT, callerLabel, cleanInput, resolveText, scriptFor, seasonDayOf, speak, tierFor, type CallContext, type CallEvents, type PrevCall } from '../story/engine'
+import { monthDayLabel } from '../story/events'
+import { loadBirthday } from '../lib/storage'
 import { pickTopic } from '../story/topics'
 import type { AnswerLog, Profile, WeatherInfo } from '../types'
 import { dialectFor, parentDialectFor } from '../data/dialects'
@@ -19,7 +21,7 @@ const HOLD_DELAY = 180
 
 interface Entry {
   id: number
-  who: 'future' | 'me' | 'system'
+  who: 'future' | 'me' | 'system' | 'stranger'
   text: string
   final?: boolean
   voiced?: boolean
@@ -44,6 +46,10 @@ export interface CallResult {
   usedUnits: number
   /** その回に出た話題（「最近の◯◯」枠） */
   topic: string
+  /** 100歳の自分に教えた誕生日（「03-14」） */
+  birthday?: string
+  /** タイムカプセル：1年後の自分へのひとこと */
+  capsule?: string
 }
 
 export function CallScene({
@@ -54,9 +60,12 @@ export function CallScene({
   prev,
   relation,
   dialed,
+  ev,
   reduced,
   onEnd,
 }: {
+  /** その回に重なる出来事（真夜中・季節の節目は、ここで決める） */
+  ev?: CallEvents
   profile: Profile
   weather: WeatherInfo | null
   reduced: boolean
@@ -98,7 +107,20 @@ export function CallScene({
     script: scriptFor(callIndex, years, dialed),
     prev,
     answers: {},
+    ev: (() => {
+      const hour = new Date().getHours()
+      const self = !relation && years > 0
+      return {
+        ...ev,
+        midnight: hour >= 2 && hour < 4,
+        season: seasonDayOf(new Date(), loadBirthday()),
+        // タイムカプセルと誕生日は、自分（未来）と話す回だけ
+        capsule: !!ev?.capsule && self,
+        askBirthday: !!ev?.askBirthday && self,
+      }
+    })(),
   })
+  const [md, setMd] = useState({ m: '', d: '' })
   const answerLog = useRef<AnswerLog[]>([])
   const finalText = useRef('')
   const unitsRef = useRef(TOTAL_UNITS)
@@ -199,8 +221,30 @@ export function CallScene({
     setEnded(true)
     await new Promise((r) => window.setTimeout(r, 2200))
     if (!alive.current) return
-    onEnd({ answers: answerLog.current, finalMessage: finalText.current, usedUnits: TOTAL_UNITS - unitsRef.current, topic: ctx.current.topic })
+    const a = ctx.current.answers
+    onEnd({ answers: answerLog.current, finalMessage: finalText.current, usedUnits: TOTAL_UNITS - unitsRef.current, topic: ctx.current.topic, birthday: a.birthday || undefined, capsule: a.capsule || undefined })
   }, [onEnd])
+
+  /** 混線：その日3回目の電話の最初に、知らない人の電話が混ざる（すぐに切れて、いつもの相手につながる） */
+  const crossedLine = async () => {
+    const lines: [Entry['who'], string, number][] = [
+      ['system', 'ザザッ……ザ……', 1200],
+      ['stranger', '……もしもし、お母さん？ あのね、今日ちょっと遅くなるかも。', 1600],
+      ['me', '……えっ？', 1000],
+      ['stranger', '……あれ？ ……すみません、間違えました。', 1400],
+      ['system', 'ガチャッ……（混線していたみたい）', 1400],
+    ]
+    for (const [who, text, ms] of lines) {
+      if (!alive.current) return
+      if (who === 'stranger') {
+        setTyping(true)
+        await wait(900)
+        setTyping(false)
+      }
+      push({ who, text })
+      await wait(ms)
+    }
+  }
 
   const runNode = async (id: string | undefined) => {
     if (!alive.current) return
@@ -251,10 +295,17 @@ export function CallScene({
     inputRef.current?.blur()
     setPending(null)
     sound.click()
-    const value = skip ? '' : cleanInput(inputValue, input.maxLength)
+    const value = skip
+      ? ''
+      : input.kind === 'monthday'
+        ? md.m && md.d
+          ? `${md.m.padStart(2, '0')}-${md.d.padStart(2, '0')}`
+          : ''
+        : cleanInput(inputValue, input.maxLength)
     ctx.current.answers[input.key] = value
-    push({ who: 'me', text: value || '……ひみつ。' })
-    answerLog.current.push({ key: input.key, question: questionOf(node, ctx.current) ?? input.prompt, answer: value || '（書かなかった）' })
+    const shown = input.kind === 'monthday' ? monthDayLabel(value) : value
+    push({ who: 'me', text: shown || '……ひみつ。' })
+    answerLog.current.push({ key: input.key, question: questionOf(node, ctx.current) ?? input.prompt, answer: shown || '（書かなかった）' })
     spend(UNIT_STEP)
     await wait(400)
     if (node.inputReply) await say(node.inputReply(value, ctx.current))
@@ -268,7 +319,11 @@ export function CallScene({
       started.current = true
       sound.duck(true)
       // 会話の種類（初回・2回目・いつもの）で、始まりの場面を変える
-      void runNode({ first: 'open', second: 'open2', regular: 'open3', dialed: 'open4' }[ctx.current.script])
+      const start = { first: 'open', second: 'open2', regular: 'open3', dialed: 'open4' }[ctx.current.script]
+      void (async () => {
+        if (ctx.current.ev?.crossed) await crossedLine()
+        await runNode(start)
+      })()
     }
     return () => {
       alive.current = false
@@ -324,7 +379,10 @@ export function CallScene({
 
   // 入力欄が出たら、画面を動かさずにフォーカスする
   useEffect(() => {
-    if (pending?.kind === 'input') inputRef.current?.focus({ preventScroll: true })
+    if (pending?.kind === 'input') {
+      setMd({ m: '', d: '' })
+      inputRef.current?.focus({ preventScroll: true })
+    }
   }, [pending])
 
   useEffect(() => {
@@ -433,28 +491,54 @@ export function CallScene({
             <label htmlFor="free" className="free-label">
               {pending.input.prompt}
             </label>
-            <div className="free-row">
-              <input
-                id="free"
-                ref={inputRef}
-                className="text-input"
-                type="text"
-                enterKeyHint="send"
-                autoComplete="off"
-                maxLength={pending.input.maxLength}
-                placeholder={pending.input.placeholder}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-              />
-              <button type="submit" className="btn primary small" disabled={!inputValue.trim()}>
-                伝える
-              </button>
-            </div>
-            <p className="char-count" aria-live="polite">
-              {[...inputValue].length}/{pending.input.maxLength}
-            </p>
+            {pending.input.kind === 'monthday' ? (
+              <div className="free-row md-row">
+                <select id="free" className="text-input" aria-label="月" value={md.m} onChange={(e) => { const m = e.target.value; setMd((v) => ({ m, d: m && Number(v.d) > new Date(2024, Number(m), 0).getDate() ? '' : v.d })) }}>
+                  <option value="">月</option>
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <option key={i} value={String(i + 1)}>
+                      {i + 1}月
+                    </option>
+                  ))}
+                </select>
+                <select className="text-input" aria-label="日" value={md.d} onChange={(e) => setMd((v) => ({ ...v, d: e.target.value }))}>
+                  <option value="">日</option>
+                  {Array.from({ length: md.m ? new Date(2024, Number(md.m), 0).getDate() : 31 }, (_, i) => (
+                    <option key={i} value={String(i + 1)}>
+                      {i + 1}日
+                    </option>
+                  ))}
+                </select>
+                <button type="submit" className="btn primary small" disabled={!md.m || !md.d}>
+                  伝える
+                </button>
+              </div>
+            ) : (
+              <>
+              <div className="free-row">
+                <input
+                  id="free"
+                  ref={inputRef}
+                  className="text-input"
+                  type="text"
+                  enterKeyHint="send"
+                  autoComplete="off"
+                  maxLength={pending.input.maxLength}
+                  placeholder={pending.input.placeholder}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                />
+                <button type="submit" className="btn primary small" disabled={!inputValue.trim()}>
+                  伝える
+                </button>
+              </div>
+              <p className="char-count" aria-live="polite">
+                {[...inputValue].length}/{pending.input.maxLength}
+              </p>
+              </>
+            )}
             <button type="button" className="btn ghost small" onClick={() => void submitInput(pending.node, pending.input, true)}>
-              書かずに答える
+              {pending.input.kind === 'monthday' ? '言わずに答える' : '書かずに答える'}
             </button>
           </form>
         )}

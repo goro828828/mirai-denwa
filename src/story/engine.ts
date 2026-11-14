@@ -66,29 +66,71 @@ export function pickYearsFor(historyCount: number, age = DEFAULT_AGE, rand = Mat
     const want = (historyCount + 1) * 10
     return { years: Math.max(10, Math.min(want, Math.floor((MAX_AGE - age) / 10) * 10)) }
   }
+  // 4回目は、必ず100歳の自分（誕生日をたずねられる）
+  if (historyCount + 1 === CENTENARIAN_CALL) return { years: Math.max(10, MAX_AGE - age) }
+  // 節目の回（50・100・200…回目）は、特別な相手ではなく、いつもの自分が全部の電話を振り返る
+  if (milestoneOf(historyCount + 1)) return { years: pickYears(age, rand) }
   if (isSpecialCall(historyCount + 1)) return rand() < 0.5 ? { years: parentYears(age), relation: PARENT } : { years: CENTURY_YEARS }
   return { years: pickYears(age, rand) }
 }
 
 /** 10回に1回の特別な回か（10・20・30…回目） */
 export function isSpecialCall(callIndex: number): boolean {
-  return callIndex > FIXED_FIRST_CALLS && callIndex % SPECIAL_EVERY === 0
+  return callIndex > FIXED_FIRST_CALLS && callIndex % SPECIAL_EVERY === 0 && !milestoneOf(callIndex)
 }
 
 /** 1〜3回目は相手が決まっている（10年後・20年後・30年後） */
 export const FIXED_FIRST_CALLS = 3
+/** 100歳の自分につながる回（誕生日をたずねて、覚えておく） */
+export const CENTENARIAN_CALL = 4
+
+/** 節目の回（50回目・100回目・以後100回ごと）なら、その回数 */
+export function milestoneOf(callIndex: number): number | null {
+  return callIndex === 50 || (callIndex >= 100 && callIndex % 100 === 0) ? callIndex : null
+}
+
+/** 季節の節目の日（誕生日は、4回目の電話で教えたあと） */
+export type SeasonDay = 'nye' | 'newyear' | 'tanabata' | 'obon' | 'birthday'
+export function seasonDayOf(d: Date, birthday?: string | null): SeasonDay | null {
+  const m = d.getMonth() + 1
+  const day = d.getDate()
+  if (birthday && birthday === `${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`) return 'birthday'
+  if (m === 12 && day === 31) return 'nye'
+  if (m === 1 && day <= 3) return 'newyear'
+  if (m === 7 && day === 7) return 'tanabata'
+  if (m === 8 && day >= 13 && day <= 16) return 'obon'
+  return null
+}
+
+/** その回に重なる出来事（App.tsx・Call.tsx で決めて、会話に差しこむ） */
+export interface CallEvents {
+  /** 真夜中（2〜4時）の電話 */
+  midnight?: boolean
+  /** 季節の節目の日 */
+  season?: SeasonDay | null
+  /** 前の電話から30日以上あいた（日数） */
+  longAgoDays?: number
+  /** 節目の回 */
+  milestone?: { n: number; firstDate: string; days: number; words: string[] }
+  /** 100歳の自分が、誕生日をたずねる */
+  askBirthday?: boolean
+  /** タイムカプセル（1年後の自分へのひとこと）をすすめる */
+  capsule?: boolean
+  /** 混線（その日3回目の電話の最初に、知らない人の声が混ざる） */
+  crossed?: boolean
+}
 
 /**
  * 自分から年代を選んでかけられる回（イベント）
  * 10回ごとの区切り（1〜10回目、11〜20回目…）の中で、必ず1回だけ起きる。
- * 区切りの10回目は特別な回なので、1〜9回目のどこか（最初の区切りは、相手が決まっている1〜3回目を除いた4〜9回目）から抽選する。
+ * 区切りの10回目は特別な回なので、1〜9回目のどこか（最初の区切りは、相手が決まっている1〜4回目を除いた5〜9回目）から抽選する。
  * 抽選は端末ごとの種（seed）から決まるので、同じ区切りの中で結果が変わらない。
  */
 export const DIAL_EVENT_SPAN = 10
 export function isDialEvent(callIndex: number, seed: number): boolean {
-  if (callIndex <= FIXED_FIRST_CALLS || isSpecialCall(callIndex)) return false
+  if (callIndex <= CENTENARIAN_CALL || isSpecialCall(callIndex)) return false
   const block = Math.floor((callIndex - 1) / DIAL_EVENT_SPAN)
-  const allowed = Array.from({ length: DIAL_EVENT_SPAN - 1 }, (_, i) => block * DIAL_EVENT_SPAN + i + 1).filter((n) => n > FIXED_FIRST_CALLS)
+  const allowed = Array.from({ length: DIAL_EVENT_SPAN - 1 }, (_, i) => block * DIAL_EVENT_SPAN + i + 1).filter((n) => n > CENTENARIAN_CALL)
   return callIndex === allowed[Math.floor(dialEventRand(seed, block) * allowed.length)]
 }
 function dialEventRand(seed: number, cycle: number): number {
@@ -216,6 +258,8 @@ export interface CallContext {
   prev?: PrevCall
   /** answerKey → 選んだ value、または自由入力の文字列 */
   answers: Record<string, string>
+  /** その回に重なる出来事 */
+  ev?: CallEvents
 }
 
 export function resolveText(t: Text, c: CallContext): string {
