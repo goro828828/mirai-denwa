@@ -86,15 +86,17 @@ export interface Capsule {
   writtenAt: string
   deliverAt: string
   delivered?: boolean
+  /** 確認用（?capsule）：通話履歴がこの件数になったら届く（日付は見ない） */
+  deliverAfterCount?: number
 }
 export function loadCapsules(): Capsule[] {
   const list = read<Capsule[]>(CAPSULE_KEY, [])
   return Array.isArray(list) ? list : []
 }
-export function addCapsule(text: string, now = new Date()) {
+export function addCapsule(text: string, now = new Date(), deliverAfterCount?: number) {
   const at = new Date(now)
   at.setFullYear(at.getFullYear() + 1)
-  const c: Capsule = { id: `${now.getTime()}-${Math.random().toString(36).slice(2, 6)}`, text, writtenAt: now.toISOString(), deliverAt: at.toISOString() }
+  const c: Capsule = { id: `${now.getTime()}-${Math.random().toString(36).slice(2, 6)}`, text, writtenAt: now.toISOString(), deliverAt: at.toISOString(), deliverAfterCount }
   write(CAPSULE_KEY, [...loadCapsules(), c])
 }
 export function markCapsulesDelivered(ids: string[]) {

@@ -1,4 +1,4 @@
-import { TRIAL, storeKey } from './lib/trial'
+import { CAPSULE_TEST, FIRST_TEST, storeKey } from './lib/trial'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CallRecord, Profile, WeatherInfo, WeatherKind } from './types'
 import { findPref } from './data/prefectures'
@@ -112,8 +112,8 @@ function eventsFor(history: CallRecord[], dialed: boolean, now = new Date()): Ca
   return {
     // 4回目（初回から数えて）は100歳の自分。誕生日をたずねるのは、この1回だけ
     askBirthday: callIndex === CENTENARIAN_CALL && !dialed && !loadBirthday(),
-    // タイムカプセルは、6・16・26…回目にすすめる
-    capsule: callIndex % 10 === 6,
+    // タイムカプセルは、6・16・26…回目にすすめる（確認用の ?capsule では毎回）
+    capsule: CAPSULE_TEST || callIndex % 10 === 6,
     // 同じ日に2回記録したあとの、3回目の電話だけ混線する
     crossed: history.filter((r) => sameDay(r.createdAt)).length === 2,
     longAgoDays: callIndex >= 2 && gapDays >= 30 ? gapDays : undefined,
@@ -122,7 +122,7 @@ function eventsFor(history: CallRecord[], dialed: boolean, now = new Date()): Ca
 }
 
 /** まだ届いていないタイムカプセルのうち、届く日をすぎたもの（?letter をつけると、日付に関係なくすべて） */
-function dueCapsules(): Capsule[] {
+function dueCapsules(historyCount: number): Capsule[] {
   let force = false
   try {
     force = new URLSearchParams(location.search).has('letter')
@@ -130,7 +130,9 @@ function dueCapsules(): Capsule[] {
     /* noop */
   }
   const now = Date.now()
-  return loadCapsules().filter((c) => !c.delivered && (force || new Date(c.deliverAt).getTime() <= now))
+  return loadCapsules().filter(
+    (c) => !c.delivered && (force || (c.deliverAfterCount != null ? historyCount >= c.deliverAfterCount : new Date(c.deliverAt).getTime() <= now)),
+  )
 }
 
 /** 4項目すべて記入済みなら、登録内容として使う */
@@ -166,7 +168,7 @@ export default function App() {
   // 初めて開いたときだけ、ホーム画面の前に「このアプリについて」を出す（すでに遊んだことがある人には出さない）
   // URL に ?about をつけると、説明画面だけをいつでも見られる。?first なら、初回の流れをまるごと（lib/trial.ts）
   const [scene, setScene] = useState<Scene>(() =>
-    TRIAL || new URLSearchParams(location.search).has('about') || !(aboutSeen() || loadHistory().length > 0) ? 'about' : 'title',
+    FIRST_TEST || new URLSearchParams(location.search).has('about') || !(aboutSeen() || loadHistory().length > 0) ? 'about' : 'title',
   )
   const [profile, setProfile] = useState<Profile | null>(null)
   const [weather, setWeather] = useState<WeatherInfo | null | undefined>(undefined)
@@ -185,7 +187,7 @@ export default function App() {
   /** その回に重なる出来事（100歳の自分の誕生日・タイムカプセル・混線・久しぶり・節目） */
   const [callEvents, setCallEvents] = useState<CallEvents>({})
   /** 届いたタイムカプセル（1年前の自分からの手紙） */
-  const [letters, setLetters] = useState<Capsule[]>(() => dueCapsules())
+  const [letters, setLetters] = useState<Capsule[]>(() => dueCapsules(loadHistory().length))
   /** 記憶を消されたあと、名前の記入からやり直すときの書きかけ */
   const [fillAgain, setFillAgain] = useState<Partial<Profile> | null>(null)
   /** 登録内容（2回目以降は、いちいち書き直さずに使う） */
@@ -379,7 +381,8 @@ export default function App() {
         milestone: callEvents.milestone?.n,
       }
       if (r.birthday) saveBirthday(r.birthday)
-      if (r.capsule) addCapsule(r.capsule)
+      // 確認用（?capsule）では、次の電話を記録したら届く
+      if (r.capsule) addCapsule(r.capsule, new Date(), CAPSULE_TEST ? loadHistory().length + 2 : undefined)
       rec.illustration = pickIllustration(rec)
       setSaveFailed(!addHistory(rec))
       setHistory(loadHistory())
@@ -409,6 +412,11 @@ export default function App() {
     sound.stopAmbient()
     setScene('title')
   }
+
+  // ホームに戻るたびに、届く日をすぎたタイムカプセルがないか見る
+  useEffect(() => {
+    if (scene === 'title') setLetters(dueCapsules(history.length))
+  }, [scene, history.length])
 
   // タイトル画面の天気：位置情報がすでに許可されていれば現在地、なければ登録した都道府県（10分ごとに取り直す）
   useEffect(() => {
