@@ -43,6 +43,12 @@ export interface DialectProfile {
   /** 形容詞・動詞のあとの「よ」「ね」 */
   yo: string
   ne: string
+  /** 名詞＋「だった」 */
+  datta: string
+  /** 動詞の打ち消し「〜ない」（例：わから{ない}、忘れ{ない}） */
+  nai: string
+  /** 「ほんと（に）」 */
+  honto: string
   /** 出典・根拠のメモ（画面には出さない） */
   basis: string
 }
@@ -59,6 +65,9 @@ const STANDARD: DialectProfile = {
   teta: 'てた',
   yo: 'よ',
   ne: 'ね',
+  datta: 'だった',
+  nai: 'ない',
+  honto: 'ほんと',
   basis: '共通語［I］',
 }
 
@@ -68,18 +77,18 @@ const p = (over: Partial<DialectProfile>): DialectProfile => ({ ...STANDARD, ...
 const TOHOKU = (basis: string) => p({ desho: 'だべ', basis })
 /** 近畿：［L］大阪「めっちゃ」「へん」、1モーラ頻度で中部・関西の「や」 */
 const KINKI = (basis: string, over: Partial<DialectProfile> = {}) =>
-  p({ dayo: 'やで', dane: 'やな', dakara: 'やから', desho: 'やろ', totemo: 'めっちゃ', ii: 'ええ', yo: 'で', ne: 'な', basis, ...over })
+  p({ dayo: 'やで', dane: 'やな', dakara: 'やから', desho: 'やろ', totemo: 'めっちゃ', ii: 'ええ', yo: 'で', ne: 'な', datta: 'やった', nai: 'へん', honto: 'ほんま', basis, ...over })
 /** 中国（山陽）：［L］広島「けん」「ぶち」「じゃ」、［G］西日本のケン類 */
 const SANYO = (basis: string, over: Partial<DialectProfile> = {}) =>
-  p({ dayo: 'じゃよ', dane: 'じゃね', dakara: 'じゃけん', kara: 'けん', desho: 'じゃろ', basis, ...over })
+  p({ dayo: 'じゃよ', dane: 'じゃね', dakara: 'じゃけん', kara: 'けん', desho: 'じゃろ', datta: 'じゃった', basis, ...over })
 /** 山陰：［G］ケン類。断定は「だ」のまま */
 const SANIN = (basis: string) => p({ dakara: 'だけん', kara: 'けん', basis })
 /** 四国：［G］ケン類 */
 const SHIKOKU = (basis: string, over: Partial<DialectProfile> = {}) =>
-  p({ dayo: 'やよ', dane: 'やね', dakara: 'やけん', kara: 'けん', desho: 'やろ', basis, ...over })
+  p({ dayo: 'やよ', dane: 'やね', dakara: 'やけん', kara: 'けん', desho: 'やろ', datta: 'やった', basis, ...over })
 /** 九州北部：［L］福岡・佐賀・長崎・熊本の「けん」「よか」「ばり」「と（っと）」 */
 const KYUSHU_N = (basis: string, over: Partial<DialectProfile> = {}) =>
-  p({ dayo: 'よ', dane: 'やね', dakara: 'やけん', kara: 'けん', desho: 'やろ', ii: 'よか', teru: 'とる', teta: 'とった', basis, ...over })
+  p({ dayo: 'よ', dane: 'やね', dakara: 'やけん', kara: 'けん', desho: 'やろ', ii: 'よか', teru: 'とる', teta: 'とった', datta: 'やった', basis, ...over })
 
 /** 都道府県コード → 方言プロフィール */
 export const DIALECTS: Record<string, DialectProfile> = {
@@ -103,10 +112,10 @@ export const DIALECTS: Record<string, DialectProfile> = {
   '18': p({ basis: '共通語［I］（［G］のサカイ類は高年層のため不採用）' }),
   '19': p({ basis: '共通語［I］（［G］奈良田のデ・ニは高年層のため不採用）' }),
   '20': p({ basis: '共通語［I］（若年層の根拠を確認できず）' }),
-  '21': p({ dayo: 'やよ', dane: 'やね', dakara: 'やで', kara: 'で', desho: 'やろ', basis: '※［G］岐阜市：デ。［L］中部・関西の「や」' }),
+  '21': p({ dayo: 'やよ', dane: 'やね', dakara: 'やで', kara: 'で', desho: 'やろ', datta: 'やった', basis: '※［G］岐阜市：デ。［L］中部・関西の「や」' }),
   '22': p({ desho: 'だら', totemo: 'ばか', basis: '［L］静岡：だら43・ばか32（強調）' }),
   '23': p({ dakara: 'だで', kara: 'で', totemo: 'でら', basis: '［L］愛知：でら47・だ/もんで14。［G］中部のデ' }),
-  '24': KINKI('※［L］中部・関西の「や」。三重は近畿の形を控えめに', { yo: 'よ', ne: 'ね', ii: 'いい' }),
+  '24': KINKI('※［L］中部・関西の「や」。三重は近畿の形を控えめに', { yo: 'よ', ne: 'ね', ii: 'いい', nai: 'ない', honto: 'ほんと' }),
   '25': KINKI('※［L］大阪の形を近畿に適用'),
   '26': KINKI('※［L］大阪の形を近畿に適用'),
   '27': KINKI('［L］大阪：めっちゃ16・へん22・せや38'),
@@ -195,7 +204,10 @@ export function parentDialectFor(prefCode: string): DialectProfile {
 
 /**
  * 台詞のテンプレートを、その県の話し方に置き換える。
- * テンプレートでは {だよ} {だね} {だから} {から} {でしょ} {すごく} {いい} {てる} {てた} {よ} {ね} を使う。
+ * テンプレートでは {だよ} {だね} {だから} {から} {でしょ} {すごく} {いい} {てる} {てた} {よ} {ね} {だった} {ない} {ほんと} を使う。
+ * {だった}：名詞＋だった（関西・四国・九州北部・岐阜「やった」、山陽「じゃった」）
+ * {ない}：動詞の打ち消し（関西「へん」：わからへん・忘れへん。［L］大阪：へん22）
+ * {ほんと}：関西「ほんま」
  */
 export function renderDialect(text: string, d: DialectProfile): string {
   return text
@@ -210,4 +222,7 @@ export function renderDialect(text: string, d: DialectProfile): string {
     .replaceAll('{てた}', d.teta)
     .replaceAll('{よ}', d.yo)
     .replaceAll('{ね}', d.ne)
+    .replaceAll('{だった}', d.datta)
+    .replaceAll('{ない}', d.nai)
+    .replaceAll('{ほんと}', d.honto)
 }

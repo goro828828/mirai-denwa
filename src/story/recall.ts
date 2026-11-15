@@ -8,10 +8,10 @@ import { t, type Variant } from './text'
 import { TOPICS } from './topics'
 
 const RECALL: Record<string, Variant> = {
-  'day:ordinary': t('……確かにこの頃、そんな毎日だった気がする。', undefined, '……ああ、あの頃はそういう毎日だった{ね}。'),
+  'day:ordinary': t('……確かにこの頃、そんな毎日{だった}気がする。', undefined, '……ああ、あの頃はそういう毎日{だった}{ね}。'),
   'day:fun': t('……ああ、あったなあ、そういう日。', undefined, '……ああ、あったね、そういう日が。'),
   'day:tired': t('……そういえば、この頃はよく疲れてた気がする。', undefined, '……あの頃はよく疲れてた{ね}。よくやってた{よ}。'),
-  'day:unsure': t('……確かに、うまく言えない日が多かった気がする。', undefined, '……あの頃は、うまく言えない日も多かった{ね}。'),
+  'day:unsure': t('……確かに、うまく言え{ない}日が多かった気がする。', undefined, '……あの頃は、うまく言え{ない}日も多かった{ね}。'),
   'people:family': t('……そうそう、家でそんな話をしてた気がする。', undefined, '……家の台所の音まで、思い出す{よ}。'),
   'people:friend': t('……何の話かは忘れたけど、笑ってたのは覚え{てる}。', undefined, '……あの頃は、くだらない話でよく笑ってた{ね}。'),
   'people:peer': t('……確かに、毎日顔を合わせてた気がする。', undefined, '……毎日会っていた人たちのこと、ふと思い出す{よ}。'),

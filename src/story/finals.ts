@@ -44,7 +44,7 @@ const FEELING_LINE: Record<FeelingCategory, Variant> = {
   excited: t('わくわくしてた、今日のこと。'),
   happy: t('うれしかった今日を、ちゃんと覚えておく。'),
   calm: t('ほっとしてた、今日の空気。'),
-  unsure: t('うまく言えない日も、ちゃんと一日。'),
+  unsure: t('うまく言え{ない}日も、ちゃんと一日。'),
 }
 
 /** よく話す人と、その話から（キー：people:peopleTalk、または people） */
@@ -52,7 +52,7 @@ const PEOPLE_LINE: Record<string, Variant> = {
   'friend:silly': t('何を話したかより、一緒に笑ったこと。'),
   'friend:serious': t('まじめな話をした夜も、いつかの思い出。'),
   friend: t('友だちと過ごした、なんでもない時間。'),
-  'family:normal': t('「今日なにあった？」が、普通だった日々。'),
+  'family:normal': t('「今日なにあった？」が、普通{だった}日々。'),
   'family:quiet': t('話さなくても、同じ部屋にいた時間。'),
   family: t('いつもの声が、いつか懐かしい声になる。'),
   'peer:fun': t('毎日会う顔も、いつか懐かしい顔。'),
@@ -61,6 +61,7 @@ const PEOPLE_LINE: Record<string, Variant> = {
   'alone:blank': t('ぼーっとしてた時間も、ちゃんと残ってる。'),
   'alone:lonely': t('ひとりで見た景色も、ちゃんと残ってる。'),
   alone: t('ひとりで見た景色も、ちゃんと残ってる。'),
+  own: t('よく話す人の声も、いつか懐かしい声。'),
 }
 
 export function finalMessage(c: CallContext): Variant {

@@ -5,7 +5,7 @@ import { monthDayLabel } from '../story/events'
 import { loadBirthday } from '../lib/storage'
 import { pickTopic } from '../story/topics'
 import type { AnswerLog, Profile, WeatherInfo } from '../types'
-import { dialectFor, parentDialectFor } from '../data/dialects'
+import { DIALECTS, dialectFor, parentDialectFor, renderDialect } from '../data/dialects'
 import { sound } from '../lib/sound'
 import { formatDuration } from '../lib/format'
 import { TOTAL_UNITS } from '../lib/cardImage'
@@ -36,8 +36,10 @@ function nextOf(node: StoryNode, c: CallContext): string | undefined {
   return typeof node.next === 'function' ? node.next(c) : node.next
 }
 
+/** 通話履歴に残す質問は、共通語で残す（{だった} などの置き換え部分を外す） */
 function questionOf(node: StoryNode, c: CallContext): string | undefined {
-  return typeof node.question === 'function' ? node.question(c) : node.question
+  const q = typeof node.question === 'function' ? node.question(c) : node.question
+  return q === undefined ? undefined : renderDialect(q, DIALECTS['13'])
 }
 
 export interface CallResult {
@@ -130,6 +132,9 @@ export function CallScene({
     })(),
   })
   const [md, setMd] = useState({ m: '', d: '' })
+  /** あなた（受け手）の話し方：選択肢も、自分の県の言い方にする（親と話す回でも、自分の言い方のまま） */
+  const myDialect = dialectFor(profile.prefCode)
+  const mine = (label: Choice['label']) => renderDialect(resolveText(label, ctx.current), myDialect)
   const answerLog = useRef<AnswerLog[]>([])
   const finalText = useRef('')
   const unitsRef = useRef(TOTAL_UNITS)
@@ -285,7 +290,7 @@ export function CallScene({
   const choose = async (node: StoryNode, c: Choice) => {
     setPending(null)
     sound.click()
-    const label = resolveText(c.label, ctx.current)
+    const label = mine(c.label)
     // まわりの音を聞く場面が終わったら、通話の音量にゆっくり戻す
     if (node.effect === 'listen') sound.duck(true)
     push({ who: 'me', text: label })
@@ -314,7 +319,7 @@ export function CallScene({
     ctx.current.answers[input.key] = value
     const shown = input.kind === 'monthday' ? monthDayLabel(value) : value
     push({ who: 'me', text: shown || '……ひみつ。' })
-    answerLog.current.push({ key: input.key, question: questionOf(node, ctx.current) ?? input.prompt, answer: shown || '（書かなかった）' })
+    answerLog.current.push({ key: input.key, question: questionOf(node, ctx.current) ?? renderDialect(input.prompt, DIALECTS['13']), answer: shown || '（書かなかった）' })
     spend(UNIT_STEP)
     await wait(400)
     if (node.inputReply) await say(node.inputReply(value, ctx.current))
@@ -484,7 +489,7 @@ export function CallScene({
                 className="btn choice"
                 onClick={() => void choose(pending.node, c)}
               >
-                {resolveText(c.label, ctx.current)}
+                {mine(c.label)}
               </button>
             ))}
           </div>
@@ -498,7 +503,7 @@ export function CallScene({
             }}
           >
             <label htmlFor="free" className="free-label">
-              {pending.input.prompt}
+              {renderDialect(pending.input.prompt, myDialect)}
             </label>
             {pending.input.kind === 'monthday' ? (
               <div className="free-row md-row">
@@ -533,7 +538,7 @@ export function CallScene({
                   enterKeyHint="send"
                   autoComplete="off"
                   maxLength={pending.input.maxLength}
-                  placeholder={pending.input.placeholder}
+                  placeholder={renderDialect(pending.input.placeholder, myDialect)}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                 />
