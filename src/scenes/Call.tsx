@@ -50,6 +50,15 @@ export interface CallResult {
   birthday?: string
   /** タイムカプセル：1年後の自分へのひとこと */
   capsule?: string
+  /** 選んだ答え（次の電話で、ときどき前の話にふれるため） */
+  picks?: Record<string, string>
+}
+
+/** 次の電話で使う答えだけを残す（自由記述の本文は残さない） */
+function pickedValues(a: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const k of ['day', 'people', 'peopleTalk']) if (a[k]) out[k] = a[k]
+  return out
 }
 
 export function CallScene({
@@ -105,7 +114,7 @@ export function CallScene({
     topic: pickTopic(Math.random, prev?.topic),
     callIndex,
     script: scriptFor(callIndex, years, dialed),
-    prev,
+    prev: prev && { ...prev, mention: !!prev.people && Math.random() < 0.5 },
     answers: {},
     ev: (() => {
       const hour = new Date().getHours()
@@ -191,7 +200,7 @@ export function CallScene({
    * 一度も出ないまま「今日の気持ち」まで来たら、そこで必ず一度出す。
    */
   const maybeRecall = async (key: string, value: string) => {
-    const forced = key === 'mood' && recallCount.current === 0
+    const forced = key === 'peopleTalk' && recallCount.current === 0
     if (!forced && Math.random() >= RECALL_CHANCE) return
     const line = recallFor(key, value, ctx.current)
     if (!line) return
@@ -222,7 +231,7 @@ export function CallScene({
     await new Promise((r) => window.setTimeout(r, 2200))
     if (!alive.current) return
     const a = ctx.current.answers
-    onEnd({ answers: answerLog.current, finalMessage: finalText.current, usedUnits: TOTAL_UNITS - unitsRef.current, topic: ctx.current.topic, birthday: a.birthday || undefined, capsule: a.capsule || undefined })
+    onEnd({ answers: answerLog.current, finalMessage: finalText.current, usedUnits: TOTAL_UNITS - unitsRef.current, topic: ctx.current.topic, birthday: a.birthday || undefined, capsule: a.capsule || undefined, picks: pickedValues(a) })
   }, [onEnd])
 
   /** 混線：その日3回目の電話の最初に、知らない人の電話が混ざる（すぐに切れて、いつもの相手につながる） */

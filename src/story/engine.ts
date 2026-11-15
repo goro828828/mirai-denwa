@@ -223,6 +223,10 @@ export interface PrevCall {
   topic?: string
   /** 前回「最近の◯◯」で書いた言葉（書いていなければ undefined） */
   topicText?: string
+  /** 前回の「よく話す人」（family / friend / peer / alone） */
+  people?: string
+  /** 今回の電話で、前回の「よく話す人」にふれるか（ときどきだけ） */
+  mention?: boolean
 }
 
 /** 「10年後」「10年前」の表記 */

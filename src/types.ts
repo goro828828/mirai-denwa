@@ -58,4 +58,6 @@ export interface CallRecord {
   dialed?: boolean
   /** 節目の回（50・100・200…回目） */
   milestone?: number
+  /** 選んだ答え（day / people / peopleTalk）。次の電話で、ときどき前の話にふれる */
+  picks?: Record<string, string>
 }

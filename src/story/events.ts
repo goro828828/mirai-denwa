@@ -124,7 +124,7 @@ export const EVENT_NODES: Record<string, StoryNode> = {
       { label: me('ごめん、ちょっとバタバタしてて', undefined, 'ごめん、バタバタしてて', 'ごめーん、忙しくてさ'), value: 'busy', reply: [t('ううん。忙しかった日々も、あとで懐かしくなる{から}。……今日は、ゆっくり話そう{ね}。')] },
       { label: me('こっちも、話したかった', undefined, 'こっちも話したかった', '話したかったよ'), value: 'missed', reply: [t('……うん。ありがとう。今日は、いつもより少し長く話そう{ね}。', undefined, '……そうかい。うれしい{よ}。今日は、ゆっくり話そう{ね}。')] },
     ],
-    next: (c) => (c.script === 'second' ? afterLongAgo('memo2')(c) : afterLongAgo('sky')(c)),
+    next: (c) => (c.script === 'second' ? afterLongAgo('memo2')(c) : afterLongAgo('bridge')(c)),
   },
 
   milestone: {
@@ -146,7 +146,7 @@ export const EVENT_NODES: Record<string, StoryNode> = {
       { label: me('そんなに話してたんだね', undefined, 'そんなに話してたんだ', 'めっちゃ話したね'), value: 'many', reply: [t('うん。……どの電話も、今では懐かしい思い出{だよ}。')] },
       { label: me('これからも、よろしくね', undefined, 'これからもよろしく', 'これからもよろしくね！'), value: 'more', reply: [t('こちらこそ。……次の電話も、いつか懐かしくなるん{だよ}。')] },
     ],
-    next: 'sky',
+    next: 'bridge',
   },
 
   /** タイムカプセル：1年後の自分へのひとこと（1年後にアプリを開くと届く） */

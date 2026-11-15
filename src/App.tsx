@@ -148,6 +148,7 @@ function prevFrom(r: CallRecord | undefined): PrevCall | undefined {
     hoursAgo: (Date.now() - new Date(r.createdAt).getTime()) / 36e5,
     topic: r.topic,
     topicText: text && text !== '（書かなかった）' ? text : undefined,
+    people: r.picks?.people,
   }
 }
 
@@ -379,6 +380,7 @@ export default function App() {
         relation,
         dialed: dialed || undefined,
         milestone: callEvents.milestone?.n,
+        picks: r.picks,
       }
       if (r.birthday) saveBirthday(r.birthday)
       // 確認用（?capsule）では、次の電話を記録したら届く
