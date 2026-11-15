@@ -264,7 +264,9 @@ p {
   background: var(--paper);
   box-shadow: var(--shadow);
   display: grid;
-  grid-template-columns: 9cqw 1fr;
+  /* 帯の幅は、カード自身の幅に対する割合で決める（cqw はカード自身ではなく外側の大きさで決まり、
+     広い画面では帯が太くなって、表の文字が細く折り返されてしまうため） */
+  grid-template-columns: 9% 1fr;
   overflow: hidden;
   color: var(--ink);
   text-align: left;

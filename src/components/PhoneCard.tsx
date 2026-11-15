@@ -59,7 +59,7 @@ export function CardFront() {
         </svg>
         <div className="pc-front-text">
           <p className="pc-small">TELEPHONE CARD</p>
-          <p className="pc-front-title">いつかのあなたへ、つながります。</p>
+          <p className="pc-front-title">いつかのあなたへ、<br />つながります。</p>
           <p className="pc-small">このカードは、どこかの公衆電話で使えます。</p>
         </div>
       </div>

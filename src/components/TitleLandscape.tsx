@@ -92,7 +92,26 @@ const BASE = 642
 const BOOTH = { x: 524, w: 68, h: 120 }
 const POLE = { x: 626, top: 470 }
 const LAMP = { x: 592, y: 498 }
-const POLES = [330, 860]
+/** 横に広い画面でも、電線が柱のないところを渡らないよう、左右の端近くにも立てる */
+const POLES = [70, 330, 860]
+
+/** 電線：左の端から、電柱と街灯の柱を順にたるませながら渡して、右の端へ */
+function wirePath(): string {
+  const pts: [number, number][] = [
+    [-20, POLE.top + 34],
+    ...POLES.filter((x) => x < POLE.x).map((x) => [x + 4, POLE.top + 24] as [number, number]),
+    [POLE.x + 4, POLE.top + 12],
+    ...POLES.filter((x) => x > POLE.x).map((x) => [x + 4, POLE.top + 24] as [number, number]),
+    [1020, POLE.top + 34],
+  ]
+  let d = `M${pts[0][0]} ${pts[0][1]}`
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1]
+    const [x1, y1] = pts[i]
+    d += ` Q${(x0 + x1) / 2} ${Math.max(y0, y1) + 26} ${x1} ${y1}`
+  }
+  return d
+}
 
 /** 稲の頭（丸いふくらみ）を横に並べた、平らな形 */
 function bumps(y: number, depth: number, step: number, h: number, offset = 0): string {
@@ -348,7 +367,7 @@ export function TitleLandscape({
 
         {/* 電線 */}
         <path
-          d={`M-20 ${POLE.top + 34} Q160 ${POLE.top + 58} ${POLES[0] + 4} ${POLE.top + 24} Q${(POLES[0] + POLE.x) / 2} ${POLE.top + 54} ${POLE.x + 4} ${POLE.top + 12} Q${(POLE.x + POLES[1]) / 2} ${POLE.top + 48} ${POLES[1] + 4} ${POLE.top + 24} Q960 ${POLE.top + 52} 1020 ${POLE.top + 34}`}
+          d={wirePath()}
           stroke="#3d3a3a"
           strokeWidth="1.4"
           fill="none"
