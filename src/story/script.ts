@@ -166,7 +166,7 @@ const prevWho = (c: CallContext) => PREV_WHO[c.prev?.people ?? ''] ?? ''
 const PEOPLE_TALK: Record<string, { question: string; ask: Variant; choices: Choice[] }> = {
   friend: {
     question: '友だちと、どんな話をする？',
-    ask: t('どんな話するの？', undefined, 'どんな話をするんだい？'),
+    ask: t('どんな話するの？', 'どんな話をするの？', 'どんな話をするんだい？'),
     choices: [
       {
         label: me('{ほんと}に、しょうもない話ばっかり', undefined, 'しょうもない話ばっかり', 'まじでしょうもない話しかしてない'),
@@ -183,7 +183,7 @@ const PEOPLE_TALK: Record<string, { question: string; ask: Variant; choices: Cho
   },
   family: {
     question: '家では、どんな話をする？',
-    ask: t('家では、どんな話するの？', undefined, '家では、どんな話をするんだい？'),
+    ask: t('家では、どんな話するの？', '家では、どんな話をしてるの？', '家では、どんな話をするんだい？'),
     choices: [
       {
         label: me('今日なにがあったとか、ふつうの話', undefined, '今日なにあったとか、ふつうの話', 'ふつうに今日の話とか'),
@@ -200,7 +200,7 @@ const PEOPLE_TALK: Record<string, { question: string; ask: Variant; choices: Cho
   },
   peer: {
     question: '毎日会う人たちは、どんな人？',
-    ask: t('どんな人たち？', undefined, 'どんな人たちなんだい？'),
+    ask: t('どんな人たち？', 'どんな人たちなの？', 'どんな人たちなんだい？'),
     choices: [
       {
         label: me('わりと楽しい人たちだよ', undefined, 'わりと楽しい人たち', 'けっこうおもしろい人たち'),
@@ -217,7 +217,7 @@ const PEOPLE_TALK: Record<string, { question: string; ask: Variant; choices: Cho
   },
   alone: {
     question: 'ひとりのときは、何をしている？',
-    ask: t('ひとりのときって、何してることが多い？', undefined, 'ひとりのときは、何をしてることが多いかい。'),
+    ask: t('ひとりのときって、何してることが多い？', 'ひとりのときは、何をしてることが多い？', 'ひとりのときは、何をしてることが多いかい。'),
     choices: [
       {
         label: me('ぼーっとしてることが多い', undefined, 'ぼーっとしてることが多い', 'だいたいぼーっとしてる'),
@@ -283,7 +283,7 @@ export const NODES: Record<string, StoryNode> = {
     answerKey: 'revisit',
     say: (c) => [
       ag(t(`そういえば、前に${prevWho(c)}の話、してくれた{でしょ}。`, undefined, `そういえば、前に${prevWho(c)}の話を、してくれた{ね}。`), { ninety: `……前に、${prevWho(c)}の話を、聞かせてくれた{ね}。` }),
-      t('最近は、どんな感じ？', undefined, '最近は、どうだい。'),
+      t('最近は、どんな感じ？', '最近は、どうかな。', '最近は、どうだい。'),
     ],
     choices: () => [
       { label: me('あいかわらずだよ', undefined, 'あいかわらずかな', '相変わらずって感じ'), value: 'same', reply: [t('そっか、あいかわらず、か。……なんか、ほっとした。', undefined, 'そうかい、あいかわらず、か。……それが{いい}{ね}。')] },
@@ -501,7 +501,7 @@ export const NODES: Record<string, StoryNode> = {
     id: 'day',
     question: '今日はどんな一日{だった}？',
     answerKey: 'day',
-    say: () => [ag(t('ねえ、今日って、どんな一日{だった}？', undefined, '今日は、どんな一日{だった}かい。'), { eighty: '今日は……どんな一日{だった}かい。ゆっくりで{いい}{よ}。', ninety: '……今日は、どんな日{だった}？', kin: 'ねえ、そっちの今日って、どんな一日{だった}？', parent: 'ねえ、そっちの今日は、どんな一日{だった}？' })],
+    say: () => [ag(t('ねえ、今日って、どんな一日{だった}？', '今日は、どんな一日{だった}？', '今日は、どんな一日{だった}かい。'), { eighty: '今日は……どんな一日{だった}かい。ゆっくりで{いい}{よ}。', ninety: '……今日は、どんな日{だった}？', kin: 'ねえ、そっちの今日って、どんな一日{だった}？', parent: 'ねえ、そっちの今日は、どんな一日{だった}？' })],
     choices: () => [
       {
         label: me('いつもと変わら{ない}一日{だった}', 'いつもと変わら{ない}一日{だった}よ', 'いつもと変わら{ない}日{だった}', 'いつも通り、ふつーの日'),
@@ -517,7 +517,7 @@ export const NODES: Record<string, StoryNode> = {
       {
         label: me('ちょっと楽しいことがあった', 'ちょっと楽しいことがあったよ', 'ちょっといいことあった', '聞いて、ちょっといいことあった'),
         value: 'fun',
-        reply: [t('お、{いい}{ね}。……どんなこと？', undefined, 'ほう、{いい}{ね}。……どんなことだい？')],
+        reply: [t('お、{いい}{ね}。……どんなこと？', 'へえ、{いい}{ね}。……どんなことがあったの？', 'ほう、{いい}{ね}。……どんなことだい？')],
         next: 'dayFun',
       },
       {
@@ -575,7 +575,7 @@ export const NODES: Record<string, StoryNode> = {
     id: 'people',
     question: '最近、よく話す人は？',
     answerKey: 'people',
-    say: () => [ag(t('そういえば、最近よく話す人っている？', undefined, 'そういえば、最近よく話す人は、いるかい。'), { kin: 'そっちで、よく話す人っている？', parent: '最近、よく話す人っている？' })],
+    say: () => [ag(t('そういえば、最近よく話す人っている？', 'そういえば、最近よく話す人はいる？', 'そういえば、最近よく話す人は、いるかい。'), { kin: 'そっちで、よく話す人っている？', parent: '最近、よく話す人っている？' })],
     choices: (c) => [
       { label: me('家族と話すことが多いかな', undefined, '家族と話すことが多いかな', 'やっぱ家族かな'), value: 'family', reply: [t('そっか、家族か。', undefined, 'そうかい、家族か。')] },
       { label: me('友だちとよく話してるよ', undefined, '友だちとよく話してる', '友だちとばっか話してる'), value: 'friend', reply: [t('そっか、友だちか。', undefined, 'そうかい、友だちか。')] },
@@ -624,7 +624,7 @@ export const NODES: Record<string, StoryNode> = {
     id: 'feeling',
     question: '今の気持ち（自由記述）',
     say: () => [
-      ag(t('ねえ。……今の気持ち、ひとことだけ、聞かせてくれる？', undefined, '……今の気持ちを、ひとことだけ、聞かせてくれるかい。'), { kin: 'ねえ。……今の気持ち、ひとことだけ、聞かせてくれる？', parent: 'よかったら、今の気持ち、ひとことだけ聞かせて。' }),
+      ag(t('ねえ。……今の気持ち、ひとことだけ、聞かせてくれる？', '……今の気持ち、ひとことだけ、聞かせてくれるかな。', '……今の気持ちを、ひとことだけ、聞かせてくれるかい。'), { kin: 'ねえ。……今の気持ち、ひとことだけ、聞かせてくれる？', parent: 'よかったら、今の気持ち、ひとことだけ聞かせて。' }),
       t('ここで言ったことは、カードには書か{ない}{から}。'),
     ],
     input: { key: 'feeling', prompt: '今の気持ち（書かなくても大丈夫）', placeholder: '例：ちょっとだけ、ほっとしてる', maxLength: 60 },

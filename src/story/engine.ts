@@ -268,21 +268,44 @@ export interface CallContext {
   route?: string
 }
 
+/**
+ * 40〜50代の自分の口調（台詞が書かれていないときの整え方）。
+ * 10年後（〜30代）の気さくな言い方を、少し落ち着いた大人の言い方にする。60代以上の「〜かい」「ごらん」ほどは年寄りにしない。
+ */
+const MIDDLE_RULES: [RegExp, string][] = [
+  [/そっか/g, 'そうか'],
+  [/^ねえ、/, ''],
+  [/ちょっと/g, '少し'],
+  [/なにか/g, '何か'],
+  [/なに/g, '何'],
+  [/なんか/g, 'なんだか'],
+  [/いろんな/g, 'いろいろな'],
+  [/ぼーっと/g, 'ぼんやり'],
+  [/ハマってる/g, '夢中になってる'],
+  [/やつ/g, 'もの'],
+  [/まじめ/g, '真面目'],
+]
+export function middleize(text: string): string {
+  return MIDDLE_RULES.reduce((s, [re, to]) => s.replace(re, to), text)
+}
+
 export function resolveText(t: Text, c: CallContext): string {
   return typeof t === 'function' ? t(c) : t
 }
 
 export function speak(variant: Variant, c: CallContext): string {
   const v = variant
+  // 40〜50代の台詞がないときは、10年後の台詞を落ち着いた口調に整える。60代以上も、書かれていなければそれを使う
+  const middle = (): Text => v.middle ?? ((cc: CallContext) => middleize(resolveText(v.young, cc)))
   const pick: Record<AgeTier, () => Text> = {
     young: () => v.young,
-    middle: () => v.middle ?? v.young,
-    elder: () => v.elder ?? v.middle ?? v.young,
-    eighty: () => v.eighty ?? v.elder ?? v.middle ?? v.young,
-    ninety: () => v.ninety ?? v.eighty ?? v.elder ?? v.middle ?? v.young,
+    middle,
+    elder: () => v.elder ?? middle(),
+    eighty: () => v.eighty ?? v.elder ?? middle(),
+    ninety: () => v.ninety ?? v.eighty ?? v.elder ?? middle(),
     past: () => v.past ?? v.young,
     parent: () => v.parent ?? v.young,
-    century: () => v.century ?? v.elder ?? v.middle ?? v.young,
+    century: () => v.century ?? v.elder ?? middle(),
     kin: () => v.kin ?? v.young,
   }
   return renderDialect(resolveText(pick[c.tier](), c), c.dialect)
