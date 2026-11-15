@@ -7,12 +7,13 @@
  * 選ぶ順番：
  *   1. 「今の気持ち」に書いた言葉の手がかり（つらい・さみしい・疲れた…）
  *   2. 今日の一日（疲れた・うまく言えない）
- *   3. よく話す人と、その話（しょうもない話・同じ部屋にいる…）
+ *   3. よく話す人と、その話（しょうもない話・同じ部屋にいる…）／帰り道・ごはん・夜・好きなものの答え（routes.ts）
  *   4. 今日の一日（いつもと変わらない・ちょっと楽しいこと）
  * 自由記述の本文はカードに載せない（共有カードに個人的な回答を出さないため）。
  */
 import type { CallContext } from './engine'
 import { t, type Variant } from './text'
+import { ROUTE_LINE } from './routes'
 
 export type FeelingCategory = 'calm' | 'tired' | 'anxious' | 'excited' | 'unsure' | 'lonely' | 'sad' | 'happy' | 'grateful'
 
@@ -73,6 +74,8 @@ export function finalMessage(c: CallContext): Variant {
     if (a.day === 'unsure') return FEELING_LINE.unsure
     const p = PEOPLE_LINE[`${a.people}:${a.peopleTalk}`] ?? PEOPLE_LINE[a.people ?? '']
     if (p) return p
+    // 帰り道・ごはん・夜・好きなもの（会話の通しの、2つめの答え）
+    for (const k of ['way2', 'food2', 'night2', 'fav2']) if (a[k] && ROUTE_LINE[`${k}:${a[k]}`]) return ROUTE_LINE[`${k}:${a[k]}`]
     if (a.day === 'fun') return t('ちょっといいことがあった、今日のこと。')
     return t('なんでもない今日も、いつかの思い出。')
   }

@@ -24,6 +24,7 @@ import { PARENT, type CallContext } from './engine'
 import { ag, me, t, type Text, type Variant } from './text'
 import { TOPICS, TOPIC_NOUN } from './topics'
 import { finalMessage } from './finals'
+import { ROUTE_NODES, ROUTE_NOUN, routeStart } from './routes'
 import { EVENT_NODES, MIDNIGHT, MIDNIGHT_BYE, afterGreeting, afterNowscape, afterSky } from './events'
 
 export type { Text, Variant } from './text'
@@ -144,7 +145,7 @@ const sinceLine = (c: CallContext): Variant => {
 
 /** 前回の話題に触れる（書いた言葉があれば、それも） */
 const memoLines = (c: CallContext): Variant[] => {
-  const noun = c.prev?.topic ? TOPIC_NOUN[c.prev.topic] : undefined
+  const noun = c.prev?.topic ? TOPIC_NOUN[c.prev.topic] ?? ROUTE_NOUN[c.prev.topic] : undefined
   const text = c.prev?.topicText
   const lines: Variant[] = []
   if (noun) lines.push(t(`この前は、${noun}の話をした{ね}。`, undefined, `この前は、${noun}の話をした{ね}。`))
@@ -530,7 +531,7 @@ export const NODES: Record<string, StoryNode> = {
         reply: [t('うん。……ひとことで言え{ない}日も、あるよ{ね}。'), t('それで{いい}{よ}。言葉にならないまま、覚えてる日もある{から}。')],
       },
     ],
-    next: 'topic',
+    next: routeStart,
   },
 
   /** 「ちょっと楽しいことがあった」のあと：どんなことか（書かなくてもよい） */
@@ -548,7 +549,7 @@ export const NODES: Record<string, StoryNode> = {
             }),
           ]
         : [t('ふふ、ひみつか。……でも、声がちょっと明るい{よ}。')],
-    next: 'topic',
+    next: routeStart,
   },
 
   /** 「最近の◯◯」枠：通話ごとに、topics.ts の話題から1つがランダムで入る */
@@ -763,4 +764,4 @@ export const NODES: Record<string, StoryNode> = {
   },
 }
 
-Object.assign(NODES, EVENT_NODES)
+Object.assign(NODES, EVENT_NODES, ROUTE_NODES)

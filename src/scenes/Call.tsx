@@ -4,6 +4,7 @@ import { DEFAULT_AGE, PARENT, callerLabel, cleanInput, resolveText, scriptFor, s
 import { monthDayLabel } from '../story/events'
 import { loadBirthday } from '../lib/storage'
 import { pickTopic } from '../story/topics'
+import { routeFor } from '../story/routes'
 import type { AnswerLog, Profile, WeatherInfo } from '../types'
 import { DIALECTS, dialectFor, parentDialectFor, renderDialect } from '../data/dialects'
 import { sound } from '../lib/sound'
@@ -113,7 +114,9 @@ export function CallScene({
     relation,
     gender: profile.gender,
     tier: tierFor(years, profile.age ?? DEFAULT_AGE, relation),
-    topic: pickTopic(Math.random, prev?.topic),
+    // 会話の通しは、通話の回数で順番に入れ替える。「ひと」の回の「最近の◯◯」は、ほかの通しと重ならない話題から選ぶ
+    route: routeFor(callIndex),
+    topic: routeFor(callIndex) === 'people' ? pickTopic(Math.random, prev?.topic, ['laugh', 'scene', 'music']) : routeFor(callIndex),
     callIndex,
     script: scriptFor(callIndex, years, dialed),
     prev: prev && { ...prev, mention: !!prev.people && Math.random() < 0.5 },
@@ -205,7 +208,7 @@ export function CallScene({
    * 一度も出ないまま「今日の気持ち」まで来たら、そこで必ず一度出す。
    */
   const maybeRecall = async (key: string, value: string) => {
-    const forced = key === 'peopleTalk' && recallCount.current === 0
+    const forced = ['peopleTalk', 'way2', 'food2', 'night2', 'fav2'].includes(key) && recallCount.current === 0
     if (!forced && Math.random() >= RECALL_CHANCE) return
     const line = recallFor(key, value, ctx.current)
     if (!line) return

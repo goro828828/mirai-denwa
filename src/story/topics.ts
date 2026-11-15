@@ -205,8 +205,9 @@ for (const [key, [ask, r1, r2, input]] of Object.entries(KIN)) {
 export const TOPIC_KEYS = Object.keys(TOPICS)
 
 /** 話題をランダムに選ぶ。avoid（前回の話題）は避ける */
-export function pickTopic(rand = Math.random, avoid?: string): string {
-  const keys = TOPIC_KEYS.filter((k) => k !== avoid)
+export function pickTopic(rand = Math.random, avoid?: string, among: string[] = TOPIC_KEYS): string {
+  const pool = among.filter((k) => k !== avoid)
+  const keys = pool.length ? pool : among
   return keys[Math.floor(rand() * keys.length)]
 }
 

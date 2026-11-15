@@ -264,6 +264,8 @@ export interface CallContext {
   answers: Record<string, string>
   /** その回に重なる出来事 */
   ev?: CallEvents
+  /** 会話の通し（people / way / food / night / fav。routes.ts） */
+  route?: string
 }
 
 export function resolveText(t: Text, c: CallContext): string {
