@@ -2002,6 +2002,15 @@ button.cal-day.selected {
 .about-lines p:last-child {
   font-weight: 700;
 }
+/* 背の低い画面：5つの文と下のボタンが、1画面に収まるように詰める */
+@media (max-height: 700px) {
+  .about-lines {
+    margin-top: 4vh;
+    gap: 14px;
+    font-size: 16px;
+    line-height: 1.75;
+  }
+}
 /* タイトル（アプリの名前） */
 .title.app-name {
   font-size: clamp(44px, 13vw, 60px);
