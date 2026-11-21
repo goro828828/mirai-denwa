@@ -938,38 +938,57 @@ p {
   -webkit-overflow-scrolling: touch;
 }
 .bubble {
-  max-width: 86%;
+  max-width: 92%;
   padding: 10px 14px;
-  border-radius: 18px;
   font-size: 16px;
   line-height: 1.7;
   animation: fadeIn 0.5s ease both;
   position: relative;
 }
+/* 未来の自分の声：吹き出しにせず、受話器の向こうの声を字幕のように出す（チャットアプリに見えないように） */
 .bubble.future {
   align-self: flex-start;
-  background: var(--paper);
-  border-bottom-left-radius: 6px;
+  background: none;
+  color: var(--on-bg);
+  border-left: 2px solid color-mix(in srgb, var(--on-bg) 45%, transparent);
+  padding: 2px 0 2px 14px;
+  font-size: 17px;
+  line-height: 1.85;
+  letter-spacing: 0.04em;
 }
+/* 自分の返事：小さく、ダッシュをつけて右に添える */
 .bubble.me {
   align-self: flex-end;
-  background: var(--accent-soft);
-  border-bottom-right-radius: 6px;
+  background: none;
+  color: var(--on-bg-sub);
+  font-size: 14px;
+  padding: 0 4px;
+}
+.bubble.me::before {
+  content: '―― ';
 }
 .bubble.system {
   align-self: center;
   background: none;
   color: var(--on-bg-sub);
   font-size: 13px;
+  letter-spacing: 0.2em;
   padding: 4px;
 }
+/* 最後の言葉：少し傾いた便せん */
 .bubble.final {
   max-width: 100%;
-  border: 2px solid var(--accent);
+  background: #f7f0de;
+  color: var(--ink);
+  border: 0;
+  border-radius: 3px;
   padding: 16px 18px;
   font-size: 17px;
   font-weight: 500;
+  transform: rotate(-0.8deg);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.1), 0 10px 18px rgba(0, 0, 0, 0.25);
   animation-duration: 1.6s;
+  margin: 6px 0;
 }
 .final-label {
   display: block;
@@ -993,13 +1012,13 @@ p {
 .bubble.typing {
   display: flex;
   gap: 5px;
-  padding: 14px 16px;
+  padding: 12px 0 12px 14px;
 }
 .bubble.typing span {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--sub);
+  background: var(--on-bg-sub);
   animation: blink 1.2s ease-in-out infinite;
 }
 .bubble.typing span:nth-child(2) {
@@ -1014,17 +1033,45 @@ p {
 .choices {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 14px;
+  padding-top: 8px;
   animation: fadeIn 0.4s ease both;
 }
+/* 返事の選択肢：テープで貼った付箋。1枚ずつ、少し傾けて、少しずらす */
 .btn.choice {
-  background: var(--paper);
-  border-color: var(--line);
+  position: relative;
+  background: #f7efd9;
+  border: 0;
   color: var(--ink);
   font-weight: 500;
-  border-radius: 16px;
+  border-radius: 2px 3px 2px 4px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.12), 0 6px 10px rgba(0, 0, 0, 0.18);
   justify-content: flex-start;
   text-align: left;
+}
+.btn.choice:nth-child(4n + 1) {
+  transform: rotate(-1.1deg);
+}
+.btn.choice:nth-child(4n + 2) {
+  transform: rotate(0.7deg) translateX(6px);
+  background: #f3e6c4;
+}
+.btn.choice:nth-child(4n + 3) {
+  transform: rotate(-0.4deg) translateX(-3px);
+}
+.btn.choice:nth-child(4n) {
+  transform: rotate(1deg);
+}
+.btn.choice::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 42%;
+  width: 54px;
+  height: 15px;
+  background: rgba(235, 225, 200, 0.75);
+  transform: rotate(-3deg);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
 }
 .free-input {
   background: var(--paper);
@@ -2103,9 +2150,9 @@ button.cal-day.selected {
 .bubble.stranger {
   align-self: flex-start;
   background: transparent;
-  border: 1.5px dashed var(--line);
+  border-left: 2px dashed color-mix(in srgb, var(--on-bg) 40%, transparent);
   color: var(--on-bg-sub);
-  border-bottom-left-radius: 6px;
+  padding: 2px 0 2px 14px;
 }
 /* タイムカプセル：1年前の自分からの手紙 */
 .sheet.letter {
